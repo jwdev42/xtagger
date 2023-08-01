@@ -11,27 +11,16 @@ const attrName = "user.xbackup"
 
 // Represents a single record within a user.xbackup xattr entry
 type Record struct {
-	Checksum    string   `json:"c"` //Hex-string of the SHA256sum of the file
-	Identifiers []string `json:"i"` //Array of names of the backup jobs that saved the file with the given checksum
-	Timestamp   int64    `json:"t"` //Unix timestamp of the last backup having that checksum
+	Checksum   string `json:"c"` //Hex-string of the SHA256sum of the file
+	Identifier string `json:"i"` //Name of the backup job that saved the file with the given checksum at the given time
+	Timestamp  int64  `json:"t"` //Unix timestamp
 }
 
 func (a *Record) Equals(b *Record) bool {
-	if a.Checksum != b.Checksum {
-		return false
+	if *a == *b {
+		return true
 	}
-	if a.Identifiers == nil && b.Identifiers != nil || a.Identifiers != nil && b.Identifiers == nil {
-		return false
-	}
-	if len(a.Identifiers) != len(b.Identifiers) {
-		return false
-	}
-	for i, id := range a.Identifiers {
-		if id != b.Identifiers[i] {
-			return false
-		}
-	}
-	return true
+	return false
 }
 
 // Represents the whole content of a user.xbackup xattr entry
