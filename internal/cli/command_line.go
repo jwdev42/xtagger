@@ -19,6 +19,9 @@ func ParseCommandLine() (*CommandLine, error) {
 		return nil, errors.New("No command specified")
 	}
 	command, err := parseCommand(os.Args[1])
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing command: %s", err)
+	}
 	var commandArgs []string
 	if len(os.Args) > 2 {
 		commandArgs = os.Args[2:]
