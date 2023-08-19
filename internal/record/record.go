@@ -3,7 +3,6 @@ package record
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dop251/scsu"
 	"github.com/pkg/xattr"
 	"time"
 )
@@ -44,15 +43,10 @@ func LoadAttribute(path string) (Attribute, error) {
 		//Wrap error to be able to catch ENOATTR
 		return nil, fmt.Errorf("Failed to read extended attribute: %w", err)
 	}
-	//Decompress payload
-	jsonText, err := scsu.Decode(payload)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to decompress payload: %s", err)
-	}
 	//Decode JSON
 	attr := make(Attribute, 0)
 	attrp := &attr
-	if err := json.Unmarshal([]byte(jsonText), attrp); err != nil {
+	if err := json.Unmarshal([]byte(payload), attrp); err != nil {
 		return nil, fmt.Errorf("Failed to decode json: %s", err)
 	}
 	return *attrp, nil
@@ -64,14 +58,9 @@ func (r Attribute) Store(path string) error {
 		panic("BUG: Calling Store() with a nil receiver is prohibited")
 	}
 	//Encode JSON
-	jsonText, err := json.Marshal(r)
+	payload, err := json.Marshal(r)
 	if err != nil {
 		return fmt.Errorf("Failed to encode json: %s", err)
-	}
-	//Compress payload
-	payload, err := scsu.EncodeStrict(string(jsonText), nil)
-	if err != nil {
-		return fmt.Errorf("Failed to compress text: %s", err)
 	}
 	//Write extended attribute
 	if err := xattr.Set(path, attrName, payload); err != nil {
