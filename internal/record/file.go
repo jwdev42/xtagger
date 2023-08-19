@@ -22,7 +22,7 @@ func NewFile(path string, hash hash.Hash) (*File, error) {
 	attr, err := LoadAttribute(path)
 	if err != nil {
 		if errors.Is(err, xattr.ENOATTR) {
-			attr = make(Attribute, 0)
+			attr = make(Attribute)
 		} else {
 			return nil, err
 		}
@@ -72,11 +72,11 @@ func (r *File) Validate() (Attribute, error) {
 		return nil, err
 	}
 	//Check all existing records for matching hashes
-	validated := make(Attribute, 0)
-	for _, rec := range r.attr {
+	validated := make(Attribute)
+	for name, rec := range r.attr {
 		if rec.Checksum == fmt.Sprintf("%x", r.fileHash.Sum(nil)) {
 			rec.Valid = true
-			validated = append(validated, rec)
+			validated[name] = rec
 		} else {
 			rec.Valid = false
 		}
@@ -88,13 +88,13 @@ func (r *File) Validate() (Attribute, error) {
 	return validated, nil
 }
 
-func (r *File) CreateRecord(identifier string) error {
+func (r *File) CreateRecord(name string) error {
 	//Check if identifier is already occupied
-	if rec := r.attr.Find(identifier); rec != nil {
+	if rec := r.attr[name]; rec != nil {
 		return &fs.PathError{
 			Op:   "Name conflict:",
 			Path: r.path,
-			Err:  fmt.Errorf("Cannot create record, identifier \"%s\" already exists", identifier),
+			Err:  fmt.Errorf("Cannot create record, identifier \"%s\" already exists", name),
 		}
 	}
 	//Hash the file
@@ -103,11 +103,10 @@ func (r *File) CreateRecord(identifier string) error {
 	}
 	//Create new record
 	rec := NewRecord()
-	rec.Identifier = identifier
 	rec.Checksum = fmt.Sprintf("%x", r.fileHash.Sum(nil))
 	rec.Valid = true
 	//Append new record to records
-	r.attr = append(r.attr, rec)
+	r.attr[name] = rec
 	//Store records in xattrs
 	if err := r.attr.Store(r.path); err != nil {
 		return err

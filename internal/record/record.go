@@ -11,10 +11,9 @@ const attrName = "user.xtagger"
 
 // Represents a single record within a user.xtagger xattr entry
 type Record struct {
-	Checksum   string `json:"c"` //Hex-string of the SHA256sum of the file.
-	Identifier string `json:"i"` //Name of the backup job that saved the file with the given checksum at the given time.
-	Timestamp  int64  `json:"t"` //Unix timestamp of the record's creation.
-	Valid      bool   `json:"v"` //Record valid if true, invalidated if false.
+	Checksum  string `json:"c"` //Hex-string of the SHA256sum of the file.
+	Timestamp int64  `json:"t"` //Unix timestamp of the record's creation.
+	Valid     bool   `json:"v"` //Record valid if true, invalidated if false.
 }
 
 // Returns a new record with the current time as timestamp. All other member fields
@@ -33,7 +32,7 @@ func (a *Record) Equals(b *Record) bool {
 }
 
 // Represents the whole content of a user.xtagger xattr entry
-type Attribute []*Record
+type Attribute map[string]*Record
 
 // Loads the xtagger extended attribute for path.
 func LoadAttribute(path string) (Attribute, error) {
@@ -44,12 +43,11 @@ func LoadAttribute(path string) (Attribute, error) {
 		return nil, fmt.Errorf("Failed to read extended attribute: %w", err)
 	}
 	//Decode JSON
-	attr := make(Attribute, 0)
-	attrp := &attr
-	if err := json.Unmarshal([]byte(payload), attrp); err != nil {
+	attr := make(Attribute)
+	if err := json.Unmarshal([]byte(payload), &attr); err != nil {
 		return nil, fmt.Errorf("Failed to decode json: %s", err)
 	}
-	return *attrp, nil
+	return attr, nil
 }
 
 // Stores the xtagger extended attribute in path's inode.
@@ -69,26 +67,16 @@ func (r Attribute) Store(path string) error {
 	return nil
 }
 
-// Returns the newest Record.
-func (r Attribute) MostRecent() *Record {
+// Returns the newest Record. Returns zero-values if no record was found.
+func (r Attribute) MostRecent() (name string, rec *Record) {
 	if r == nil || len(r) < 1 {
-		return nil
+		return "", nil
 	}
-	biggest := r[0]
-	for _, rec := range r {
-		if rec.Timestamp > biggest.Timestamp {
-			biggest = rec
+	for k, v := range r {
+		if rec == nil || v.Timestamp > rec.Timestamp {
+			name = k
+			rec = v
 		}
 	}
-	return biggest
-}
-
-// Returns the first record that matches identifier. Returns nil otherwise.
-func (r Attribute) Find(identifier string) *Record {
-	for _, rec := range r {
-		if rec.Identifier == identifier {
-			return rec
-		}
-	}
-	return nil
+	return name, rec
 }
