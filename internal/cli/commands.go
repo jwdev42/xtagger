@@ -7,15 +7,15 @@ import (
 const (
 	CommandInvalid Command = ""
 	CommandShow            = "show"
-	CommandCreate          = "create"
-	CommandRemove          = "remove"
+	CommandTag             = "tag"
+	CommandUntag           = "untag"
 )
 
 type Command string
 
 func parseCommand(input string) (Command, error) {
 	switch cmd := Command(input); cmd {
-	case CommandShow, CommandCreate, CommandRemove:
+	case CommandShow, CommandTag, CommandUntag:
 		return cmd, nil
 	}
 	return CommandInvalid, fmt.Errorf("Unknown command: %s", input)

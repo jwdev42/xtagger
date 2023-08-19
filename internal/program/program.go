@@ -14,7 +14,7 @@ func Run() error {
 		return fmt.Errorf("Command line error: %s", err)
 	}
 	switch command := cmdline.Command(); command {
-	case cli.CommandCreate:
+	case cli.CommandTag:
 		return run(cmdline, tagDir, tagFile)
 	default:
 		return fmt.Errorf("Unknown command \"%s\"", command)
