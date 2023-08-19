@@ -1,12 +1,11 @@
 package io
 
-import( 
-	"io"
+import (
 	"hash"
+	"io"
 )
 
 func HashCopy(dst io.Writer, src io.Reader, hash hash.Hash) (written int64, err error) {
-	const bufsize = 1024*1024 //1 MiB
 	buf := make([]byte, bufsize)
 	for true {
 		r, err := src.Read(buf)
