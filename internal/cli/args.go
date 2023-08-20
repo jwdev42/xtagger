@@ -7,6 +7,7 @@ const (
 	ArgKeyRecursive        //Recursive flag
 	ArgKeyFollowSymlinks
 	ArgKeyBackup
+	ArgKeyOmitEmpty
 )
 
 type ArgKey int

@@ -45,6 +45,26 @@ func (r *CommandLine) Arg(key ArgKey) (any, bool) {
 	return val, ok
 }
 
+// Checks for problems not detected by the parser such as missing
+// mandatory arguments. Returns an error if it finds a problem.
+func (r *CommandLine) Check() error {
+	if err := r.checkMandatoryName(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *CommandLine) checkMandatoryName() error {
+	switch r.command {
+	case CommandTag, CommandUntag:
+		val, ok := r.Arg(ArgKeyName)
+		if !ok || val.(string) == "" {
+			return fmt.Errorf("Flag \"-name\" is mandatory for command \"%s\"", r.command)
+		}
+	}
+	return nil
+}
+
 func (r *CommandLine) Paths() []string {
 	return r.args[ArgKeyInput].([]string)
 }
@@ -61,10 +81,14 @@ func (r *CommandLine) FlagFollowSymlinks() bool {
 	return r.args[ArgKeyFollowSymlinks].(bool)
 }
 
+func (r *CommandLine) FlagOmitEmpty() bool {
+	return r.args[ArgKeyOmitEmpty].(bool)
+}
+
 func parseCommandArgs(command Command, args []string) (map[ArgKey]any, error) {
 	switch command {
 	case CommandPrint, CommandTag, CommandUntag:
-		return parseArgsCommon(args)
+		return parseArgs(args)
 	case CommandInvalid:
 		panic("BUG: Zero-value trap CommandInvalid triggered")
 	}
@@ -97,13 +121,14 @@ func parsePath(path string) (string, error) {
 	return parsedPath, nil
 }
 
-func parseArgsCommon(args []string) (map[ArgKey]any, error) {
+func parseArgs(args []string) (map[ArgKey]any, error) {
 	parsedArgs := make(map[ArgKey]any)
 	flagSet := flag.NewFlagSet("common", flag.ContinueOnError)
 	flagName := new(name)
 	flagSet.Var(flagName, "name", "The xtag's name")
-	flagRecursive := flagSet.Bool("recursive", false, "Recurse into subdirectories if true")
-	flagFollowSymlinks := flagSet.Bool("follow-symlinks", false, "Follows symbolic links if true")
+	flagRecursive := flagSet.Bool("R", false, "Recurse into subdirectories if true")
+	flagFollowSymlinks := flagSet.Bool("L", false, "Follows symbolic links if true")
+	flagOmitEmpty := flagSet.Bool("omitempty", false, "Skips empty entries if true")
 	flagBackup := flagSet.String("backup", "", "Takes a file path as argument, activates backup mode if set")
 	if err := flagSet.Parse(args); err != nil {
 		return nil, err
@@ -111,6 +136,7 @@ func parseArgsCommon(args []string) (map[ArgKey]any, error) {
 	parsedArgs[ArgKeyName] = flagName.Get()
 	parsedArgs[ArgKeyRecursive] = *flagRecursive
 	parsedArgs[ArgKeyFollowSymlinks] = *flagFollowSymlinks
+	parsedArgs[ArgKeyOmitEmpty] = *flagOmitEmpty
 	parsedArgs[ArgKeyBackup] = *flagBackup
 	if paths, err := parsePaths(flagSet.Args()); err != nil {
 		return nil, err
