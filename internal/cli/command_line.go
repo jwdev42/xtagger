@@ -63,7 +63,7 @@ func (r *CommandLine) FlagFollowSymlinks() bool {
 
 func parseCommandArgs(command Command, args []string) (map[ArgKey]any, error) {
 	switch command {
-	case CommandShow, CommandTag, CommandUntag:
+	case CommandPrint, CommandTag, CommandUntag:
 		return parseArgsCommon(args)
 	case CommandInvalid:
 		panic("BUG: Zero-value trap CommandInvalid triggered")

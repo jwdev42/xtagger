@@ -1,6 +1,7 @@
 package record
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	iio "github.com/jwdev42/xtagger/internal/io"
@@ -112,4 +113,19 @@ func (r *File) CreateRecord(name string) error {
 		return err
 	}
 	return nil
+}
+
+func (r *File) String() string {
+	entity := struct {
+		Path    string
+		Records Attribute
+	}{
+		Path:    r.path,
+		Records: r.attr,
+	}
+	payload, err := json.MarshalIndent(&entity, "", "  ")
+	if err != nil {
+		panic(fmt.Sprintf("Error marshalling json: %s", err))
+	}
+	return fmt.Sprintf("%s\n", payload)
 }
