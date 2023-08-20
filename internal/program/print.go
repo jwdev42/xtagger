@@ -14,6 +14,9 @@ func printFile(cmdline *cli.CommandLine, path string) error {
 	if err != nil {
 		return err
 	}
+	if cmdline.FlagOmitEmpty() && len(f.Attributes()) == 0 {
+		return nil
+	}
 	fmt.Printf("%s\n", f)
 	return nil
 }

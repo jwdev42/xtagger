@@ -64,6 +64,12 @@ func (r *File) open() (*os.File, error) {
 	return os.Open(r.path)
 }
 
+// Returns all records for the file. The received map is shared with
+// the object.
+func (r *File) Attributes() Attribute {
+	return r.attr
+}
+
 // Calculates the file's checksum, then checks each record if it is still valid.
 // Updates each record's field "valid". Returns only valid records.
 // Returns an empty slice if no valid records were found.
