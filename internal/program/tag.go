@@ -2,7 +2,6 @@ package program
 
 import (
 	"context"
-	"crypto/sha256"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
@@ -41,11 +40,11 @@ func tagDir(cmdline *cli.CommandLine, path string) error {
 }
 
 func tagFile(cmdline *cli.CommandLine, path string) error {
-	f, err := record.NewFile(path, sha256.New())
+	f, err := record.NewFile(path)
 	if err != nil {
 		return err
 	}
-	if err := f.CreateRecord(cmdline.FlagName()); err != nil {
+	if err := f.CreateRecord(cmdline.FlagName(), cmdline.FlagHash()); err != nil {
 		return err
 	}
 	return nil

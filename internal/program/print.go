@@ -10,7 +10,7 @@ import (
 )
 
 func printFile(cmdline *cli.CommandLine, path string) error {
-	f, err := record.NewFile(path, nil)
+	f, err := record.NewFile(path)
 	if err != nil {
 		return err
 	}

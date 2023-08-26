@@ -8,6 +8,7 @@ const (
 	ArgKeyFollowSymlinks
 	ArgKeyBackup
 	ArgKeyOmitEmpty
+	ArgKeyHashAlgo
 )
 
 type ArgKey int

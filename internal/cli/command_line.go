@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/jwdev42/xtagger/internal/hashes"
 	"os"
 	"path/filepath"
 )
@@ -73,6 +74,10 @@ func (r *CommandLine) FlagName() string {
 	return r.args[ArgKeyName].(string)
 }
 
+func (r *CommandLine) FlagHash() hashes.Algo {
+	return r.args[ArgKeyHashAlgo].(hashes.Algo)
+}
+
 func (r *CommandLine) FlagRecursive() bool {
 	return r.args[ArgKeyRecursive].(bool)
 }
@@ -126,6 +131,8 @@ func parseArgs(args []string) (map[ArgKey]any, error) {
 	flagSet := flag.NewFlagSet("common", flag.ContinueOnError)
 	flagName := new(name)
 	flagSet.Var(flagName, "name", "The xtag's name")
+	flagHash := new(hash)
+	flagSet.Var(flagName, "hash", "The hash algorithm to be used")
 	flagRecursive := flagSet.Bool("R", false, "Recurse into subdirectories if true")
 	flagFollowSymlinks := flagSet.Bool("L", false, "Follows symbolic links if true")
 	flagOmitEmpty := flagSet.Bool("omitempty", false, "Skips empty entries if true")
@@ -134,6 +141,7 @@ func parseArgs(args []string) (map[ArgKey]any, error) {
 		return nil, err
 	}
 	parsedArgs[ArgKeyName] = flagName.Get()
+	parsedArgs[ArgKeyHashAlgo] = flagHash.Get()
 	parsedArgs[ArgKeyRecursive] = *flagRecursive
 	parsedArgs[ArgKeyFollowSymlinks] = *flagFollowSymlinks
 	parsedArgs[ArgKeyOmitEmpty] = *flagOmitEmpty

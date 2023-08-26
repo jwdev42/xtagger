@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"github.com/jwdev42/xtagger/internal/hashes"
 	"unicode"
 )
 
@@ -33,5 +34,33 @@ func (r *name) Set(s string) error {
 		}
 	}
 	*r = name(s)
+	return nil
+}
+
+type hash hashes.Algo
+
+func (r *hash) String() string {
+	if r == nil {
+		return ""
+	}
+	return string(*r)
+}
+
+func (r *hash) Get() any {
+	if r == nil {
+		return nil
+	}
+	return hashes.Algo(*r)
+}
+
+func (r *hash) Set(s string) error {
+	if len(s) < 1 {
+		return errors.New("hash cannot be empty")
+	}
+	algo, err := hashes.ParseAlgo(s)
+	if err != nil {
+		return err
+	}
+	*r = hash(algo)
 	return nil
 }

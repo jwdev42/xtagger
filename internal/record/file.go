@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jwdev42/xtagger/internal/hashes"
 	iio "github.com/jwdev42/xtagger/internal/io"
 	"github.com/pkg/xattr"
 	"hash"
@@ -14,12 +15,11 @@ import (
 
 // Accesses and manipulates the records of a particular file
 type File struct {
-	path     string
-	attr     Attribute
-	fileHash hash.Hash
+	path string
+	attr Attribute
 }
 
-func NewFile(path string, hash hash.Hash) (*File, error) {
+func NewFile(path string) (*File, error) {
 	attr, err := LoadAttribute(path)
 	if err != nil {
 		if errors.Is(err, xattr.ENOATTR) {
@@ -29,34 +29,35 @@ func NewFile(path string, hash hash.Hash) (*File, error) {
 		}
 	}
 	return &File{
-		path:     path,
-		attr:     attr,
-		fileHash: hash,
+		path: path,
+		attr: attr,
 	}, nil
 }
 
 // Hashes the file.
-func (r *File) hash() error {
+func (r *File) hash(hash hash.Hash) error {
 	//Open File
 	src, err := r.open()
 	if err != nil {
 		return err
 	}
 	defer src.Close()
-	r.fileHash.Reset()
-	return iio.Hash(src, r.fileHash)
+	//hashing
+	hash.Reset()
+	return iio.Hash(src, hash)
 }
 
 // Hashes the file and writes a file copy to dst simultaneously.
-func (r *File) hashCopy(dst io.Writer) (written int64, err error) {
+func (r *File) hashCopy(dst io.Writer, hash hash.Hash) (written int64, err error) {
 	//Open File
 	src, err := r.open()
 	if err != nil {
 		return 0, err
 	}
 	defer src.Close()
-	r.fileHash.Reset()
-	return iio.HashCopy(dst, src, r.fileHash)
+	//hashing
+	hash.Reset()
+	return iio.HashCopy(dst, src, hash)
 }
 
 // Wraps os.Open()
@@ -74,14 +75,23 @@ func (r *File) Attributes() Attribute {
 // Updates each record's field "valid". Returns only valid records.
 // Returns an empty slice if no valid records were found.
 func (r *File) Validate() (Attribute, error) {
-	//Hash the file
-	if err := r.hash(); err != nil {
-		return nil, err
-	}
-	//Check all existing records for matching hashes
+	//Create hashcache as different records could use different hash algorithms
+	hashCache := make(map[hashes.Algo]string)
 	validated := make(Attribute)
+	//Recalculate and compare hashes for all records
 	for name, rec := range r.attr {
-		if rec.Checksum == fmt.Sprintf("%x", r.fileHash.Sum(nil)) {
+		targetSum, ok := hashCache[rec.HashAlgo]
+		if !ok {
+			//Hash the file if hash not in cache
+			hash := rec.HashAlgo.New()
+			if err := r.hash(hash); err != nil {
+				return nil, err
+			}
+			//Write hashsum to hashcache
+			hashCache[rec.HashAlgo] = fmt.Sprintf("%x", hash.Sum(nil))
+			targetSum = hashCache[rec.HashAlgo]
+		}
+		if rec.Checksum == targetSum {
 			rec.Valid = true
 			validated[name] = rec
 		} else {
@@ -95,7 +105,7 @@ func (r *File) Validate() (Attribute, error) {
 	return validated, nil
 }
 
-func (r *File) CreateRecord(name string) error {
+func (r *File) CreateRecord(name string, hashAlgo hashes.Algo) error {
 	//Check if identifier is already occupied
 	if rec := r.attr[name]; rec != nil {
 		return &fs.PathError{
@@ -105,12 +115,14 @@ func (r *File) CreateRecord(name string) error {
 		}
 	}
 	//Hash the file
-	if err := r.hash(); err != nil {
+	hash := hashAlgo.New()
+	if err := r.hash(hash); err != nil {
 		return err
 	}
 	//Create new record
 	rec := NewRecord()
-	rec.Checksum = fmt.Sprintf("%x", r.fileHash.Sum(nil))
+	rec.Checksum = fmt.Sprintf("%x", hash.Sum(nil))
+	rec.HashAlgo = hashAlgo
 	rec.Valid = true
 	//Append new record to records
 	r.attr[name] = rec
