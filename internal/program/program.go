@@ -13,9 +13,6 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("Command line error: %s", err)
 	}
-	if err := cmdline.Check(); err != nil {
-		return fmt.Errorf("Command line error: %s", err)
-	}
 	//Execute command-specific branch
 	switch command := cmdline.Command(); command {
 	case cli.CommandTag:

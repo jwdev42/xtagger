@@ -14,9 +14,9 @@ const (
 type Command string
 
 func parseCommand(input string) (Command, error) {
-	switch cmd := Command(input); cmd {
+	switch c := Command(input); c {
 	case CommandPrint, CommandTag, CommandUntag:
-		return cmd, nil
+		return c, nil
 	}
-	return CommandInvalid, fmt.Errorf("Unknown command: %s", input)
+	return CommandInvalid, fmt.Errorf("Unknown command \"%s\"", input)
 }

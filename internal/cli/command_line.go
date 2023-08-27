@@ -2,154 +2,130 @@ package cli
 
 import (
 	"errors"
-	"flag"
 	"fmt"
+	"github.com/integrii/flaggy"
 	"github.com/jwdev42/xtagger/internal/hashes"
-	"os"
-	"path/filepath"
 )
 
-// Represents a parsed command line argument set
+const (
+	shortName           = "n"
+	longName            = "name"
+	shortHash           = "H"
+	longHash            = "hash"
+	shortRecursive      = "r"
+	longRecursive       = "recursive"
+	shortFollowSymlinks = "L"
+	longFollowSymlinks  = "follow-symlinks"
+	shortPath           = "p"
+	longPath            = "path"
+)
+
+// Represents a parsed command line argument set.
 type CommandLine struct {
-	command Command        //Specified command
-	args    map[ArgKey]any //Holds the parsed command-specific arguments
+	command              Command //Specified command
+	paths                []string
+	flagRecursive        bool
+	flagFollowSymlinks   bool
+	flagName             string
+	flagHash             hashes.Algo
+	flagBackupTargetPath string
+	flagOmitEmpty        bool
 }
 
+// Parses and validates command line arguments.
 func ParseCommandLine() (*CommandLine, error) {
-	if len(os.Args) < 2 {
-		return nil, errors.New("No command specified")
+	cl := new(CommandLine)
+	parser := flaggy.NewParser("xtagger")
+	var flagHash string
+	//Command tag
+	tag := flaggy.NewSubcommand(string(CommandTag))
+	tag.String(&cl.flagName, shortName, longName, "Name for the new record")
+	tag.String(&flagHash, shortHash, longHash, "Hashing algorithm")
+	tag.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
+	tag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
+	tag.String(&cl.flagBackupTargetPath, "b", "backup", "Backup target path")
+	tag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
+	parser.AttachSubcommand(tag, 1)
+	//Command untag
+	untag := flaggy.NewSubcommand(string(CommandUntag))
+	untag.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
+	untag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
+	untag.String(&cl.flagName, shortName, longName, "Name of the record to be deleted")
+	untag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
+	parser.AttachSubcommand(untag, 1)
+	//Command print
+	print := flaggy.NewSubcommand(string(CommandPrint))
+	print.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
+	print.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
+	print.String(&cl.flagName, shortName, longName, "Only print records matching name")
+	print.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
+	parser.AttachSubcommand(print, 1)
+	//Parse
+	if err := parser.Parse(); err != nil {
+		return nil, err
 	}
-	command, err := parseCommand(os.Args[1])
+	//Parse command name
+	cmd, err := parseCommand(parser.TrailingSubcommand().Name)
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing command: %s", err)
+		return nil, err
 	}
-	var commandArgs []string
-	if len(os.Args) > 2 {
-		commandArgs = os.Args[2:]
+	cl.command = cmd
+	//Parse specific oddities
+	switch cl.command {
+	case CommandTag:
+		algo, err := hashes.ParseAlgo(flagHash)
+		if err != nil {
+			return nil, err
+		}
+		cl.flagHash = algo
 	}
-	args, err := parseCommandArgs(command, commandArgs)
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing arguments for command \"%s\": %s", command, err)
+	//Validate CommandLine
+	if err := cl.validate(); err != nil {
+		return nil, err
 	}
-	return &CommandLine{
-		command: command,
-		args:    args,
-	}, nil
+	return cl, nil
 }
 
 func (r *CommandLine) Command() Command {
 	return r.command
 }
 
-func (r *CommandLine) Arg(key ArgKey) (any, bool) {
-	val, ok := r.args[key]
-	return val, ok
-}
-
-// Checks for problems not detected by the parser such as missing
-// mandatory arguments. Returns an error if it finds a problem.
-func (r *CommandLine) Check() error {
-	if err := r.checkMandatoryName(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *CommandLine) checkMandatoryName() error {
-	switch r.command {
-	case CommandTag, CommandUntag:
-		val, ok := r.Arg(ArgKeyName)
-		if !ok || val.(string) == "" {
-			return fmt.Errorf("Flag \"-name\" is mandatory for command \"%s\"", r.command)
-		}
-	}
-	return nil
-}
-
 func (r *CommandLine) Paths() []string {
-	return r.args[ArgKeyInput].([]string)
+	return r.paths
 }
 
 func (r *CommandLine) FlagName() string {
-	return r.args[ArgKeyName].(string)
+	return r.flagName
 }
 
 func (r *CommandLine) FlagHash() hashes.Algo {
-	return r.args[ArgKeyHashAlgo].(hashes.Algo)
+	return r.flagHash
 }
 
 func (r *CommandLine) FlagRecursive() bool {
-	return r.args[ArgKeyRecursive].(bool)
+	return r.flagRecursive
 }
 
 func (r *CommandLine) FlagFollowSymlinks() bool {
-	return r.args[ArgKeyFollowSymlinks].(bool)
+	return r.flagFollowSymlinks
 }
 
 func (r *CommandLine) FlagOmitEmpty() bool {
-	return r.args[ArgKeyOmitEmpty].(bool)
+	return r.flagOmitEmpty
 }
 
-func parseCommandArgs(command Command, args []string) (map[ArgKey]any, error) {
-	switch command {
-	case CommandPrint, CommandTag, CommandUntag:
-		return parseArgs(args)
+// Checks if all mandatory command line arguments are set dependent on the command.
+func (r *CommandLine) validate() error {
+	if r.paths == nil || len(r.paths) < 1 {
+		return errors.New("No path specified")
+	}
+	switch r.command {
 	case CommandInvalid:
-		panic("BUG: Zero-value trap CommandInvalid triggered")
-	}
-	panic("BUG: You're not supposed to be here")
-}
-
-func parsePaths(args []string) ([]string, error) {
-	if args == nil || len(args) < 1 {
-		return nil, errors.New("No path in input")
-	}
-	paths := make([]string, len(args)) //stores the parsed paths
-	for i, arg := range args {
-		var err error
-		paths[i], err = parsePath(arg)
-		if err != nil {
-			return nil, err
+		return errors.New("No command specified")
+	case CommandTag:
+		if err := validateName(r.flagName); err != nil {
+			return fmt.Errorf("Flag %q: %s", longName, err)
 		}
 	}
-	return paths, nil
-}
-
-func parsePath(path string) (string, error) {
-	if path == "" {
-		return "", errors.New("Path cannot be empty")
-	}
-	parsedPath, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	return parsedPath, nil
-}
-
-func parseArgs(args []string) (map[ArgKey]any, error) {
-	parsedArgs := make(map[ArgKey]any)
-	flagSet := flag.NewFlagSet("common", flag.ContinueOnError)
-	flagName := new(name)
-	flagSet.Var(flagName, "name", "The xtag's name")
-	flagHash := new(hash)
-	flagSet.Var(flagName, "hash", "The hash algorithm to be used")
-	flagRecursive := flagSet.Bool("R", false, "Recurse into subdirectories if true")
-	flagFollowSymlinks := flagSet.Bool("L", false, "Follows symbolic links if true")
-	flagOmitEmpty := flagSet.Bool("omitempty", false, "Skips empty entries if true")
-	flagBackup := flagSet.String("backup", "", "Takes a file path as argument, activates backup mode if set")
-	if err := flagSet.Parse(args); err != nil {
-		return nil, err
-	}
-	parsedArgs[ArgKeyName] = flagName.Get()
-	parsedArgs[ArgKeyHashAlgo] = flagHash.Get()
-	parsedArgs[ArgKeyRecursive] = *flagRecursive
-	parsedArgs[ArgKeyFollowSymlinks] = *flagFollowSymlinks
-	parsedArgs[ArgKeyOmitEmpty] = *flagOmitEmpty
-	parsedArgs[ArgKeyBackup] = *flagBackup
-	if paths, err := parsePaths(flagSet.Args()); err != nil {
-		return nil, err
-	} else {
-		parsedArgs[ArgKeyInput] = paths
-	}
-	return parsedArgs, nil
+	return nil
 }
