@@ -10,6 +10,14 @@ import (
 )
 
 func printFile(cmdline *cli.CommandLine, path string) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	//Skip irregular files
+	if !info.Mode().IsRegular() {
+		return nil
+	}
 	f, err := record.NewFile(path)
 	if err != nil {
 		return err
@@ -22,10 +30,11 @@ func printFile(cmdline *cli.CommandLine, path string) error {
 }
 
 func printDir(cmdline *cli.CommandLine, path string) error {
+	root := path
 	examine := func(name string, d fs.DirEntry, err error) error {
 		path := filepath.Join(path, name)
 		if d.IsDir() {
-			if !cmdline.FlagRecursive() {
+			if !cmdline.FlagRecursive() && path != root {
 				return fs.SkipDir
 			}
 			return nil
