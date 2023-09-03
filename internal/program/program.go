@@ -19,6 +19,8 @@ func Run() error {
 		return run(cmdline, tagDir, tagFile)
 	case cli.CommandPrint:
 		return run(cmdline, printDir, printFile)
+	case cli.CommandUntag:
+		return run(cmdline, untagDir, untagFile)
 	default:
 		return fmt.Errorf("Unknown command \"%s\"", command)
 	}
