@@ -117,7 +117,7 @@ func (r *File) CreateRecord(name string, hashAlgo hashes.Algo) error {
 	//Hash the file
 	hash := hashAlgo.New()
 	if err := r.hash(hash); err != nil {
-		return err
+		return fmt.Errorf("Could not hash file: %s", err)
 	}
 	//Create new record
 	rec := NewRecord()
@@ -128,7 +128,7 @@ func (r *File) CreateRecord(name string, hashAlgo hashes.Algo) error {
 	r.attr[name] = rec
 	//Store records in xattrs
 	if err := r.attr.Store(r.path); err != nil {
-		return err
+		return fmt.Errorf("Could not store xattrs: %s", err)
 	}
 	return nil
 }

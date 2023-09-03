@@ -31,6 +31,11 @@ func tagDir(cmdline *cli.CommandLine, path string) error {
 		if info.Err() != nil {
 			return stopOnError(info.Err())
 		}
+		//Skip irregular files
+		if !info.Mode().IsRegular() {
+			info = <-nextInfo
+			continue
+		}
 		if err := tagFile(cmdline, info.Path()); err != nil {
 			return stopOnError(err)
 		}
