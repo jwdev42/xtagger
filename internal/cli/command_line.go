@@ -65,11 +65,7 @@ func ParseCommandLine() (*CommandLine, error) {
 		return nil, err
 	}
 	//Parse command name
-	cmd, err := parseCommand(parser.TrailingSubcommand().Name)
-	if err != nil {
-		return nil, err
-	}
-	cl.command = cmd
+	cl.command = Command(parser.TrailingSubcommand().Name)
 	//Parse specific oddities
 	switch cl.command {
 	case CommandTag:

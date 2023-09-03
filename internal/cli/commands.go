@@ -1,9 +1,5 @@
 package cli
 
-import (
-	"fmt"
-)
-
 const (
 	CommandInvalid Command = ""
 	CommandPrint           = "print"
@@ -12,11 +8,3 @@ const (
 )
 
 type Command string
-
-func parseCommand(input string) (Command, error) {
-	switch c := Command(input); c {
-	case CommandPrint, CommandTag, CommandUntag:
-		return c, nil
-	}
-	return CommandInvalid, fmt.Errorf("Unknown command \"%s\"", input)
-}
