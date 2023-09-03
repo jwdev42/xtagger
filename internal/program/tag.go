@@ -44,7 +44,7 @@ func tagFile(cmdline *cli.CommandLine, path string) error {
 	if err != nil {
 		return err
 	}
-	if err := f.CreateRecord(cmdline.FlagName(), cmdline.FlagHash()); err != nil {
+	if err := f.CreateRecord(cmdline.FlagNames()[0], cmdline.FlagHash()); err != nil {
 		return err
 	}
 	return nil

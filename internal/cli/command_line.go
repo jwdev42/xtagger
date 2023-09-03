@@ -26,7 +26,7 @@ type CommandLine struct {
 	paths                []string
 	flagRecursive        bool
 	flagFollowSymlinks   bool
-	flagName             string
+	flagNames            []string
 	flagHash             hashes.Algo
 	flagBackupTargetPath string
 	flagOmitEmpty        bool
@@ -36,10 +36,11 @@ type CommandLine struct {
 func ParseCommandLine() (*CommandLine, error) {
 	cl := new(CommandLine)
 	parser := flaggy.NewParser("xtagger")
+	//Intermediates for flags with custom types
 	var flagHash string
 	//Command tag
 	tag := flaggy.NewSubcommand(string(CommandTag))
-	tag.String(&cl.flagName, shortName, longName, "Name for the new record")
+	tag.StringSlice(&cl.flagNames, shortName, longName, "Name for the new record")
 	tag.String(&flagHash, shortHash, longHash, "Hashing algorithm")
 	tag.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
 	tag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
@@ -50,14 +51,14 @@ func ParseCommandLine() (*CommandLine, error) {
 	untag := flaggy.NewSubcommand(string(CommandUntag))
 	untag.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
 	untag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
-	untag.String(&cl.flagName, shortName, longName, "Name of the record to be deleted")
+	untag.StringSlice(&cl.flagNames, shortName, longName, "Name of the record to be deleted")
 	untag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
 	parser.AttachSubcommand(untag, 1)
 	//Command print
 	print := flaggy.NewSubcommand(string(CommandPrint))
 	print.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
 	print.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
-	print.String(&cl.flagName, shortName, longName, "Only print records matching name")
+	print.StringSlice(&cl.flagNames, shortName, longName, "Only print records matching name")
 	print.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
 	parser.AttachSubcommand(print, 1)
 	//Parse
@@ -66,15 +67,8 @@ func ParseCommandLine() (*CommandLine, error) {
 	}
 	//Parse command name
 	cl.command = Command(parser.TrailingSubcommand().Name)
-	//Parse specific oddities
-	switch cl.command {
-	case CommandTag:
-		algo, err := hashes.ParseAlgo(flagHash)
-		if err != nil {
-			return nil, err
-		}
-		cl.flagHash = algo
-	}
+	//Process custom types that flaggy doesn't support directly
+	cl.flagHash = hashes.Algo(flagHash)
 	//Validate CommandLine
 	if err := cl.validate(); err != nil {
 		return nil, err
@@ -90,8 +84,8 @@ func (r *CommandLine) Paths() []string {
 	return r.paths
 }
 
-func (r *CommandLine) FlagName() string {
-	return r.flagName
+func (r *CommandLine) FlagNames() []string {
+	return r.flagNames
 }
 
 func (r *CommandLine) FlagHash() hashes.Algo {
@@ -119,9 +113,21 @@ func (r *CommandLine) validate() error {
 	case CommandInvalid:
 		return errors.New("No command specified")
 	case CommandTag:
-		if err := validateName(r.flagName); err != nil {
+		//Check if flag longName is present exactly once
+		if names := r.flagNames; names == nil {
+			return fmt.Errorf("Command %q: Flag %q is mandatory", r.command, longName)
+		} else if len(names) != 1 {
+			return fmt.Errorf("Command %q: Flag %q can be set just once", r.command, longName)
+		}
+		if err := validateName(r.flagNames[0]); err != nil {
 			return fmt.Errorf("Flag %q: %s", longName, err)
 		}
+		//Check if hashing algorithm is valid
+		algo, err := hashes.ParseAlgo(string(r.flagHash))
+		if err != nil {
+			return fmt.Errorf("Flag %q: %s", longHash, err)
+		}
+		r.flagHash = algo
 	}
 	return nil
 }
