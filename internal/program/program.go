@@ -31,12 +31,22 @@ func run(cmdline *cli.CommandLine, dirFunc, fileFunc func(*cli.CommandLine, stri
 		if err != nil {
 			return err
 		}
+		//Check if symlink
 		if info.Mode()&fs.ModeSymlink == fs.ModeSymlink {
 			if !cmdline.FlagFollowSymlinks() {
 				continue
+			} else {
+				//if symlinks are allowed, follow them
+				info, err = os.Stat(path)
+				if err != nil {
+					return err
+				}
 			}
-			err = dirFunc(cmdline, path)
-		} else if info.Mode()&fs.ModeDir == fs.ModeDir {
+		}
+		if info.IsDir() {
+			if !cmdline.FlagRecursive() {
+				continue
+			}
 			err = dirFunc(cmdline, path)
 		} else {
 			err = fileFunc(cmdline, path)

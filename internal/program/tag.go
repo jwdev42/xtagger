@@ -9,7 +9,7 @@ import (
 
 func tagDir(cmdline *cli.CommandLine, path string) error {
 	ctx, cancel := context.WithCancel(context.Background())
-	ms := filesystem.NewMultistat(cmdline.FlagRecursive(), cmdline.FlagFollowSymlinks())
+	ms := filesystem.NewMultistat(cmdline.FlagFollowSymlinks())
 	nextInfo, err := ms.Run(ctx, path)
 	stopOnError := func(err error) error {
 		//Cancel context

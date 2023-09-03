@@ -30,13 +30,9 @@ func printFile(cmdline *cli.CommandLine, path string) error {
 }
 
 func printDir(cmdline *cli.CommandLine, path string) error {
-	root := path
 	examine := func(name string, d fs.DirEntry, err error) error {
 		path := filepath.Join(path, name)
 		if d.IsDir() {
-			if !cmdline.FlagRecursive() && path != root {
-				return fs.SkipDir
-			}
 			return nil
 		}
 		return printFile(cmdline, path)

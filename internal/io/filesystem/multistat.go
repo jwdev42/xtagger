@@ -10,13 +10,11 @@ import (
 
 type Multistat struct {
 	followSymlinks bool
-	recurse        bool
 }
 
-func NewMultistat(recurse, followSymlinks bool) *Multistat {
+func NewMultistat(followSymlinks bool) *Multistat {
 	return &Multistat{
 		followSymlinks: followSymlinks,
-		recurse:        recurse,
 	}
 }
 
@@ -52,9 +50,6 @@ func (r *Multistat) scrape(ctx context.Context, wg *sync.WaitGroup, collector ch
 			return
 		}
 		if entry.IsDir() {
-			if !r.recurse {
-				continue
-			}
 			wg.Add(1)
 			go r.scrape(ctx, wg, collector, entryPath)
 		} else {
