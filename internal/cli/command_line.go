@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/integrii/flaggy"
+	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/hashes"
 )
 
@@ -18,12 +19,15 @@ const (
 	longFollowSymlinks  = "follow-symlinks"
 	shortPath           = "p"
 	longPath            = "path"
+	shortLogLevel       = "ll"
+	longLogLevel        = "loglevel"
 )
 
 // Represents a parsed command line argument set.
 type CommandLine struct {
 	command              Command //Specified command
 	paths                []string
+	flagLogLevel         logger.Level
 	flagRecursive        bool
 	flagFollowSymlinks   bool
 	flagNames            []string
@@ -38,6 +42,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	parser := flaggy.NewParser("xtagger")
 	//Intermediates for flags with custom types
 	var flagHash string
+	flagLogLevel := "error"
 	//Command tag
 	tag := flaggy.NewSubcommand(string(CommandTag))
 	tag.StringSlice(&cl.flagNames, shortName, longName, "Name for the new record")
@@ -46,6 +51,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	tag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
 	tag.String(&cl.flagBackupTargetPath, "b", "backup", "Backup target path")
 	tag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
+	tag.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
 	parser.AttachSubcommand(tag, 1)
 	//Command untag
 	untag := flaggy.NewSubcommand(string(CommandUntag))
@@ -53,6 +59,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	untag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
 	untag.StringSlice(&cl.flagNames, shortName, longName, "Name of the record to be deleted")
 	untag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
+	untag.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
 	parser.AttachSubcommand(untag, 1)
 	//Command print
 	print := flaggy.NewSubcommand(string(CommandPrint))
@@ -60,6 +67,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	print.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
 	print.StringSlice(&cl.flagNames, shortName, longName, "Only print records matching name")
 	print.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
+	print.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
 	parser.AttachSubcommand(print, 1)
 	//Parse
 	if err := parser.Parse(); err != nil {
@@ -69,6 +77,11 @@ func ParseCommandLine() (*CommandLine, error) {
 	cl.command = Command(parser.TrailingSubcommand().Name)
 	//Process custom types that flaggy doesn't support directly
 	cl.flagHash = hashes.Algo(flagHash)
+	logLevel, err := logger.ParseLevel(flagLogLevel)
+	if err != nil {
+		return nil, err
+	}
+	cl.flagLogLevel = logLevel
 	//Validate CommandLine
 	if err := cl.validate(); err != nil {
 		return nil, err
@@ -82,6 +95,10 @@ func (r *CommandLine) Command() Command {
 
 func (r *CommandLine) Paths() []string {
 	return r.paths
+}
+
+func (r *CommandLine) FlagLogLevel() logger.Level {
+	return r.flagLogLevel
 }
 
 func (r *CommandLine) FlagNames() []string {

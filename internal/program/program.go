@@ -3,6 +3,7 @@ package program
 import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/global"
 	"io/fs"
 	"os"
 )
@@ -13,6 +14,8 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("Command line error: %s", err)
 	}
+	//Update Logger
+	global.DefaultLogger.SetLevel(cmdline.FlagLogLevel())
 	//Execute command-specific branch
 	switch command := cmdline.Command(); command {
 	case cli.CommandTag:

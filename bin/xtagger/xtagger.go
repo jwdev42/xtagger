@@ -1,14 +1,17 @@
 package main
 
 import (
-	"fmt"
+	"github.com/jwdev42/logger"
+	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/program"
 	"os"
 )
 
 func main() {
+	//Setup logger
+	global.DefaultLogger = logger.New(os.Stderr, logger.LevelError, " - ")
+	//Run program
 	if err := program.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "[FATAL] %s\n", err)
-		os.Exit(1)
+		global.DefaultLogger.Dief("%s", err)
 	}
 }
