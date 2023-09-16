@@ -8,7 +8,7 @@ import (
 
 // PurgeFile removes all extended attributes by xtagger from the file at path.
 func PurgeFile(path string) error {
-	info, err := os.Lstat(path)
+	info, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
@@ -19,5 +19,14 @@ func PurgeFile(path string) error {
 			Err:  errors.New("Not a regular file"),
 		}
 	}
-	return xattr.LRemove(path, attrName)
+	attrNames, err := xattr.List(path)
+	if err != nil {
+		return err
+	}
+	for _, name := range attrNames {
+		if name == attrName {
+			return xattr.Remove(path, attrName)
+		}
+	}
+	return nil
 }

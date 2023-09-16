@@ -35,5 +35,5 @@ func printDir(cmdline *cli.CommandLine, path string) error {
 		return printFile(cmdline, filepath.Join(path, d.Name()))
 	}
 
-	return filesystem.WalkDir(path, createWalkDirOpts(cmdline), examine)
+	return filesystem.WalkDir(path, createWalkDirOpts(cmdline, false), examine)
 }

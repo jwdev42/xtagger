@@ -7,13 +7,14 @@ import (
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
 )
 
-func createWalkDirOpts(cmdline *cli.CommandLine) *filesystem.WalkDirOpts {
-	var opts = &filesystem.WalkDirOpts{
-		DupeDetector: make(data.DupeDetector),
-		DetectorHash: sha256.New(),
-	}
+func createWalkDirOpts(cmdline *cli.CommandLine, detectProcessedFiles bool) *filesystem.WalkDirOpts {
+	var opts = new(filesystem.WalkDirOpts)
 	if cmdline.FlagFollowSymlinks() {
 		opts.SymlinkMode = filesystem.SymlinksRejectNone
+	}
+	if detectProcessedFiles {
+		opts.DupeDetector = make(data.DupeDetector)
+		opts.DetectorHash = sha256.New()
 	}
 	return opts
 }

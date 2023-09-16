@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	OnErrorAbort ErrorBehaviour = iota //Abort on error
-	OnErrorLog                         //Log the error and continue
+	OnErrorAbort ErrorBehaviour = iota //Abort on soft errors
+	OnErrorLog                         //Log the soft error and continue
 )
 
 const (
@@ -29,10 +29,11 @@ type SymlinkBehaviour int
 type FileExaminer func(path string, dirEnt fs.DirEntry, opts *WalkDirOpts) error
 
 type WalkDirOpts struct {
-	ErrorMode    ErrorBehaviour
-	SymlinkMode  SymlinkBehaviour
-	DupeDetector data.DupeDetector
-	DetectorHash hash.Hash
+	ErrorMode      ErrorBehaviour
+	SymlinkMode    SymlinkBehaviour
+	DupeDetector   data.DupeDetector
+	DetectorHash   hash.Hash
+	symlinkCounter int
 }
 
 func WrapWalkDirFunc(exec fs.WalkDirFunc, skipOnError bool) fs.WalkDirFunc {
@@ -62,87 +63,85 @@ func wrapWalkDirFuncEvalErr(err error, path string, skipOnError bool) error {
 }
 
 func WalkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("Not a directory: %s", path)
-	}
 	return walkDir(path, opts, fileEx)
 }
 
 func walkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
-	//Stat directory
-	info, err := os.Lstat(path)
-	if err != nil {
+	softErr := func(err error) error {
+		if err == nil {
+			return err
+		}
 		if opts.ErrorMode == OnErrorLog {
 			global.DefaultLogger.Error(err)
 		} else {
 			return err
 		}
+		return nil
+	}
+	//Stat directory
+	info, err := os.Lstat(path)
+	if softErr(err) != nil {
+		return err
+	}
+	//Check if path is a directory
+	if !(info.IsDir() || info.Mode()&(fs.ModeDir|fs.ModeSymlink) != 0) {
+		return fmt.Errorf("Not a directory: %s", path)
 	}
 	//Evaluate Symlink
 	if info.Mode()&fs.ModeSymlink != 0 {
+		//Check if symlinks are to follow
 		if opts.SymlinkMode != SymlinksRejectNone {
-			global.DefaultLogger.Info("Skipping directory symlink %s", path)
+			global.DefaultLogger.Infof("Skipping directory symlink: %s", path)
 			return nil
 		}
-		realPath, err := filepath.EvalSymlinks(path)
-		if err != nil {
-			err = fmt.Errorf("Failed to resolve symlinks for path %s: %s", path, err)
-			if opts.ErrorMode == OnErrorLog {
-				global.DefaultLogger.Error(err)
-				return nil
-			}
-			return err
+		//Symlink counter
+		if opts.symlinkCounter >= 40 {
+			return errors.New("Symlink limit reached")
 		}
-		if err := opts.DupeDetector.Register(strings.NewReader(realPath), opts.DetectorHash); err != nil {
-			if errors.Is(err, data.DupeDetected) {
-				global.DefaultLogger.Errorf("Symlink %s points to already evaluated path %s", path, realPath)
-				return nil
-			} else {
-				if opts.ErrorMode == OnErrorLog {
-					global.DefaultLogger.Error(err)
-					return nil
-				}
-				return err
-			}
-		}
-	} else {
-		if err := opts.DupeDetector.Register(strings.NewReader(path), opts.DetectorHash); err != nil {
-			if errors.Is(err, data.DupeDetected) {
-				global.DefaultLogger.Errorf("Path already evaluated %s", path)
-			} else {
-				if opts.ErrorMode == OnErrorLog {
-					global.DefaultLogger.Error(err)
-					return nil
-				}
-				return err
-			}
-		}
+		opts.symlinkCounter++
+		defer func() {
+			opts.symlinkCounter--
+			global.DefaultLogger.Debugf("Symlink counter: %02d", opts.symlinkCounter)
+		}()
+		global.DefaultLogger.Debugf("Symlink counter: %02d", opts.symlinkCounter)
 	}
 	//Read directory entries
 	dirEnts, errs := readDirEnts(path)
 	if len(errs) > 0 {
-		if opts.ErrorMode == OnErrorLog {
-			for _, err := range errs {
+		for i, err := range errs {
+			if len(errs)-i > 1 {
 				global.DefaultLogger.Error(err)
+				continue
 			}
-		} else {
-			return errs[0]
+			if softErr(err) != nil {
+				return err
+			}
 		}
 	}
+	//Loop directory entries
 	for _, dirEnt := range dirEnts {
 		newPath := filepath.Join(path, dirEnt.Name())
 		if dirEnt.IsDir() || dirEnt.Type()&(fs.ModeDir|fs.ModeSymlink) != 0 {
+			//Descend into darkness
 			if err := walkDir(newPath, opts, fileEx); err != nil {
 				return err
 			}
 		} else {
+			//Use DupeDetector for files if available
+			if opts.DupeDetector != nil {
+				realPath, err := filepath.EvalSymlinks(newPath)
+				if err != nil {
+					return err
+				}
+				if err := opts.DupeDetector.Register(strings.NewReader(realPath), opts.DetectorHash); err != nil {
+					global.DefaultLogger.Debugf("DupeDetector: Skipping already processed file: %s", newPath)
+					continue
+				}
+			}
+			//Call file executor function
 			if err := fileEx(path, dirEnt, opts); err != nil {
 				if errors.Is(err, fs.SkipDir) {
-					global.DefaultLogger.Debugf("Skipping rest of directory %s", newPath)
+					global.DefaultLogger.Debugf("File executor returned fs.SkipDir, skipping rest of directory: %s", path)
 					return nil
 				}
 				return err

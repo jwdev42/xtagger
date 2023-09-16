@@ -5,32 +5,16 @@ import (
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"io/fs"
-	"os"
 	"path/filepath"
 )
 
 func untagFile(cmdline *cli.CommandLine, path string) error {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return err
-	}
-	//Skip irregular files
-	if !info.Mode().IsRegular() {
-		return nil
-	}
 	return record.PurgeFile(path)
 }
 
 func untagDir(cmdline *cli.CommandLine, path string) error {
-	examine := func(name string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		path := filepath.Join(path, name)
-		if d.IsDir() {
-			return nil
-		}
-		return untagFile(cmdline, path)
+	examine := func(path string, d fs.DirEntry, opts *filesystem.WalkDirOpts) error {
+		return untagFile(cmdline, filepath.Join(path, d.Name()))
 	}
-	return fs.WalkDir(os.DirFS(path), ".", filesystem.WrapWalkDirFunc(examine, false))
+	return filesystem.WalkDir(path, createWalkDirOpts(cmdline, false), examine)
 }
