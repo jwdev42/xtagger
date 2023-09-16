@@ -3,6 +3,7 @@ package program
 import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"io/fs"
 	"os"
@@ -30,12 +31,9 @@ func printFile(cmdline *cli.CommandLine, path string) error {
 }
 
 func printDir(cmdline *cli.CommandLine, path string) error {
-	examine := func(name string, d fs.DirEntry, err error) error {
-		path := filepath.Join(path, name)
-		if d.IsDir() {
-			return nil
-		}
-		return printFile(cmdline, path)
+	examine := func(path string, d fs.DirEntry, opts *filesystem.WalkDirOpts) error {
+		return printFile(cmdline, filepath.Join(path, d.Name()))
 	}
-	return fs.WalkDir(os.DirFS(path), ".", examine)
+
+	return filesystem.WalkDir(path, createWalkDirOpts(cmdline), examine)
 }

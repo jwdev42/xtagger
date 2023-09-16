@@ -2,6 +2,7 @@ package program
 
 import (
 	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"io/fs"
 	"os"
@@ -22,11 +23,14 @@ func untagFile(cmdline *cli.CommandLine, path string) error {
 
 func untagDir(cmdline *cli.CommandLine, path string) error {
 	examine := func(name string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		path := filepath.Join(path, name)
 		if d.IsDir() {
 			return nil
 		}
 		return untagFile(cmdline, path)
 	}
-	return fs.WalkDir(os.DirFS(path), ".", examine)
+	return fs.WalkDir(os.DirFS(path), ".", filesystem.WrapWalkDirFunc(examine, false))
 }
