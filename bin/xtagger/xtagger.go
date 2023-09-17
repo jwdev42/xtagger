@@ -12,6 +12,8 @@ func main() {
 	global.DefaultLogger = logger.New(os.Stderr, logger.LevelError, " - ")
 	//Run program
 	if err := program.Run(); err != nil {
-		global.DefaultLogger.Dief("%s", err)
+		global.DefaultLogger.Panicf("%s", err)
+		global.ExitCode = global.ExitHardError
 	}
+	os.Exit(int(global.ExitCode))
 }

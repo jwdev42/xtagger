@@ -16,6 +16,10 @@ func Run() error {
 	}
 	//Update Logger
 	global.DefaultLogger.SetLevel(cmdline.FlagLogLevel())
+	//Set soft error behaviour
+	if cmdline.FlagQuitOnSoftError() {
+		global.StopOnSoftError()
+	}
 	//Execute command-specific branch
 	switch command := cmdline.Command(); command {
 	case cli.CommandTag:

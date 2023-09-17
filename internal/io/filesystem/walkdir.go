@@ -14,11 +14,6 @@ import (
 )
 
 const (
-	OnErrorAbort ErrorBehaviour = iota //Abort on soft errors
-	OnErrorLog                         //Log the soft error and continue
-)
-
-const (
 	SymlinksRejectAll  SymlinkBehaviour = iota //Reject all symlinks
 	SymlinksRejectDirs                         //Do not resolve symlinks to directories, but follow symlinks to files
 	SymlinksRejectNone                         //Follow all symlinks
@@ -29,37 +24,10 @@ type SymlinkBehaviour int
 type FileExaminer func(path string, dirEnt fs.DirEntry, opts *WalkDirOpts) error
 
 type WalkDirOpts struct {
-	ErrorMode      ErrorBehaviour
 	SymlinkMode    SymlinkBehaviour
 	DupeDetector   data.DupeDetector
 	DetectorHash   hash.Hash
 	symlinkCounter int
-}
-
-func WrapWalkDirFunc(exec fs.WalkDirFunc, skipOnError bool) fs.WalkDirFunc {
-	walkDir := func(path string, d fs.DirEntry, err error) error {
-		if err := exec(path, d, err); err != nil {
-			return wrapWalkDirFuncEvalErr(err, path, skipOnError)
-		}
-		return nil
-	}
-	return walkDir
-}
-
-func wrapWalkDirFuncEvalErr(err error, path string, skipOnError bool) error {
-	switch err {
-	case fs.SkipAll, fs.SkipDir:
-		return err
-	}
-	if pathErr, ok := err.(*fs.PathError); ok {
-		pathErr.Path = filepath.Join(path, pathErr.Path)
-		err = pathErr
-	}
-	if skipOnError {
-		global.DefaultLogger.Error(err)
-		return nil
-	}
-	return err
 }
 
 func WalkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
@@ -67,21 +35,10 @@ func WalkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
 }
 
 func walkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
-	softErr := func(err error) error {
-		if err == nil {
-			return err
-		}
-		if opts.ErrorMode == OnErrorLog {
-			global.DefaultLogger.Error(err)
-		} else {
-			return err
-		}
-		return nil
-	}
 	//Stat directory
 	info, err := os.Lstat(path)
-	if softErr(err) != nil {
-		return err
+	if err != nil {
+		return global.FilterSoftError(err)
 	}
 	//Check if path is a directory
 	if !(info.IsDir() || info.Mode()&(fs.ModeDir|fs.ModeSymlink) != 0) {
@@ -113,7 +70,7 @@ func walkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
 				global.DefaultLogger.Error(err)
 				continue
 			}
-			if softErr(err) != nil {
+			if global.FilterSoftError(err) != nil {
 				return err
 			}
 		}

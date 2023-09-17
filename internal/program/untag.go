@@ -2,6 +2,7 @@ package program
 
 import (
 	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"io/fs"
@@ -9,7 +10,7 @@ import (
 )
 
 func untagFile(cmdline *cli.CommandLine, path string) error {
-	return record.PurgeFile(path)
+	return global.FilterSoftError(record.PurgeFile(path))
 }
 
 func untagDir(cmdline *cli.CommandLine, path string) error {

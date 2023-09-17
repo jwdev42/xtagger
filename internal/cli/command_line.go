@@ -9,18 +9,20 @@ import (
 )
 
 const (
-	shortName           = "n"
-	longName            = "name"
-	shortHash           = "H"
-	longHash            = "hash"
-	shortRecursive      = "r"
-	longRecursive       = "recursive"
-	shortFollowSymlinks = "L"
-	longFollowSymlinks  = "follow-symlinks"
-	shortPath           = "p"
-	longPath            = "path"
-	shortLogLevel       = "ll"
-	longLogLevel        = "loglevel"
+	shortName            = "n"
+	longName             = "name"
+	shortHash            = "H"
+	longHash             = "hash"
+	shortRecursive       = "r"
+	longRecursive        = "recursive"
+	shortFollowSymlinks  = "L"
+	longFollowSymlinks   = "follow-symlinks"
+	shortPath            = "p"
+	longPath             = "path"
+	shortLogLevel        = "ll"
+	longLogLevel         = "loglevel"
+	shortQuitOnSoftError = "qose"
+	longQuitOnSoftError  = "quit-on-soft-error"
 )
 
 // Represents a parsed command line argument set.
@@ -34,6 +36,7 @@ type CommandLine struct {
 	flagHash             hashes.Algo
 	flagBackupTargetPath string
 	flagOmitEmpty        bool
+	flagQuitOnSoftError  bool
 }
 
 // Parses and validates command line arguments.
@@ -49,6 +52,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	tag.String(&flagHash, shortHash, longHash, "Hashing algorithm")
 	tag.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
 	tag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
+	tag.Bool(&cl.flagQuitOnSoftError, shortQuitOnSoftError, longQuitOnSoftError, "Exits the program if a soft error occurs")
 	tag.String(&cl.flagBackupTargetPath, "b", "backup", "Backup target path")
 	tag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
 	tag.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
@@ -57,6 +61,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	untag := flaggy.NewSubcommand(string(CommandUntag))
 	untag.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
 	untag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
+	untag.Bool(&cl.flagQuitOnSoftError, shortQuitOnSoftError, longQuitOnSoftError, "Exits the program if a soft error occurs")
 	untag.StringSlice(&cl.flagNames, shortName, longName, "Name of the record to be deleted")
 	untag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
 	untag.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
@@ -65,6 +70,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	print := flaggy.NewSubcommand(string(CommandPrint))
 	print.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
 	print.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
+	print.Bool(&cl.flagQuitOnSoftError, shortQuitOnSoftError, longQuitOnSoftError, "Exits the program if a soft error occurs")
 	print.StringSlice(&cl.flagNames, shortName, longName, "Only print records matching name")
 	print.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
 	print.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
@@ -119,6 +125,10 @@ func (r *CommandLine) FlagFollowSymlinks() bool {
 
 func (r *CommandLine) FlagOmitEmpty() bool {
 	return r.flagOmitEmpty
+}
+
+func (r *CommandLine) FlagQuitOnSoftError() bool {
+	return r.flagQuitOnSoftError
 }
 
 // Checks if all mandatory command line arguments are set dependent on the command.
