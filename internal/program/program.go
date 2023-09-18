@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/global"
-	"io/fs"
 	"os"
 )
 
@@ -38,23 +37,18 @@ func run(cmdline *cli.CommandLine, dirFunc, fileFunc func(*cli.CommandLine, stri
 	for _, path := range cmdline.Paths() {
 		info, err := os.Lstat(path)
 		if err != nil {
-			return err
-		}
-		//Check if symlink
-		if info.Mode()&fs.ModeSymlink == fs.ModeSymlink {
-			if !cmdline.FlagFollowSymlinks() {
+			if global.FilterSoftError(err) == nil {
 				continue
-			} else {
-				//if symlinks are allowed, follow them
-				info, err = os.Stat(path)
-				if err != nil {
-					return err
-				}
 			}
+			return err
 		}
 		if info.IsDir() {
 			if !cmdline.FlagRecursive() {
-				continue
+				if err := global.SoftErrorf("Recursive mode is not set and path is a directory: %s", path); err == nil {
+					continue
+				} else {
+					return err
+				}
 			}
 			err = dirFunc(cmdline, path)
 		} else {
