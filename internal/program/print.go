@@ -2,7 +2,7 @@ package program
 
 import (
 	"fmt"
-	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"io/fs"
@@ -10,7 +10,8 @@ import (
 	"path/filepath"
 )
 
-func printFile(cmdline *cli.CommandLine, path string) error {
+func printFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
+	path := filepath.Join(parent, dirEnt.Name())
 	info, err := os.Lstat(path)
 	if err != nil {
 		return err
@@ -23,17 +24,9 @@ func printFile(cmdline *cli.CommandLine, path string) error {
 	if err != nil {
 		return err
 	}
-	if cmdline.FlagOmitEmpty() && len(f.Attributes()) == 0 {
+	if global.CommandLine.FlagOmitEmpty() && len(f.Attributes()) == 0 {
 		return nil
 	}
 	fmt.Printf("%s\n", f)
 	return nil
-}
-
-func printDir(cmdline *cli.CommandLine, path string) error {
-	examine := func(path string, d fs.DirEntry, opts *filesystem.WalkDirOpts) error {
-		return printFile(cmdline, filepath.Join(path, d.Name()))
-	}
-
-	return filesystem.WalkDir(path, createWalkDirOpts(cmdline, false), examine)
 }

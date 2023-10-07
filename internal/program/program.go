@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/global"
+	"github.com/jwdev42/xtagger/internal/io/filesystem"
+	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 func Run() error {
@@ -13,6 +16,7 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("Command line error: %s", err)
 	}
+	global.CommandLine = cmdline
 	//Update Logger
 	global.DefaultLogger.SetLevel(cmdline.FlagLogLevel())
 	//Set soft error behaviour
@@ -22,19 +26,19 @@ func Run() error {
 	//Execute command-specific branch
 	switch command := cmdline.Command(); command {
 	case cli.CommandTag:
-		return run(cmdline, tagDir, tagFile)
+		return run(createWalkDirOpts(true), tagFile)
 	case cli.CommandPrint:
-		return run(cmdline, printDir, printFile)
+		return run(createWalkDirOpts(false), printFile)
 	case cli.CommandUntag:
-		return run(cmdline, untagDir, untagFile)
+		return run(createWalkDirOpts(true), untagFile)
 	default:
 		return fmt.Errorf("Unknown command \"%s\"", command)
 	}
 	return nil
 }
 
-func run(cmdline *cli.CommandLine, dirFunc, fileFunc func(*cli.CommandLine, string) error) error {
-	for _, path := range cmdline.Paths() {
+func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
+	for _, path := range global.CommandLine.Paths() {
 		info, err := os.Lstat(path)
 		if err != nil {
 			if global.FilterSoftError(err) == nil {
@@ -43,16 +47,16 @@ func run(cmdline *cli.CommandLine, dirFunc, fileFunc func(*cli.CommandLine, stri
 			return err
 		}
 		if info.IsDir() {
-			if !cmdline.FlagRecursive() {
+			if !global.CommandLine.FlagRecursive() {
 				if err := global.SoftErrorf("Recursive mode is not set and path is a directory: %s", path); err == nil {
 					continue
 				} else {
 					return err
 				}
 			}
-			err = dirFunc(cmdline, path)
+			err = filesystem.WalkDir(path, opts, fileFunc)
 		} else {
-			err = fileFunc(cmdline, path)
+			err = fileFunc(filepath.Dir(path), fs.FileInfoToDirEntry(info), opts)
 		}
 		if err != nil {
 			return err

@@ -21,7 +21,7 @@ const (
 
 type ErrorBehaviour int
 type SymlinkBehaviour int
-type FileExaminer func(path string, dirEnt fs.DirEntry, opts *WalkDirOpts) error
+type FileExaminer func(parent string, dirEnt fs.DirEntry, opts *WalkDirOpts) error
 
 type WalkDirOpts struct {
 	SymlinkMode    SymlinkBehaviour

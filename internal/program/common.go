@@ -1,15 +1,18 @@
 package program
 
 import (
+	"context"
 	"crypto/sha256"
-	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/data"
+	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
+	"io/fs"
+	"sync"
 )
 
-func createWalkDirOpts(cmdline *cli.CommandLine, detectProcessedFiles bool) *filesystem.WalkDirOpts {
+func createWalkDirOpts(detectProcessedFiles bool) *filesystem.WalkDirOpts {
 	var opts = new(filesystem.WalkDirOpts)
-	if cmdline.FlagFollowSymlinks() {
+	if global.CommandLine.FlagFollowSymlinks() {
 		opts.SymlinkMode = filesystem.SymlinksRejectNone
 	}
 	if detectProcessedFiles {
@@ -17,4 +20,20 @@ func createWalkDirOpts(cmdline *cli.CommandLine, detectProcessedFiles bool) *fil
 		opts.DetectorHash = sha256.New()
 	}
 	return opts
+}
+
+func wrapFileExaminer(ctx context.Context, wg *sync.WaitGroup, errs chan<- error, payload filesystem.FileExaminer) filesystem.FileExaminer {
+	return func(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := payload(parent, dirEnt, opts); err != nil {
+				errs <- err
+			}
+		}()
+		return nil
+	}
 }
