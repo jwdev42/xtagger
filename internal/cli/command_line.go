@@ -23,6 +23,8 @@ const (
 	longLogLevel         = "loglevel"
 	shortQuitOnSoftError = "qose"
 	longQuitOnSoftError  = "quit-on-soft-error"
+	shortMultiThread     = "MP"
+	longMultiThread      = "multithread"
 )
 
 // Represents a parsed command line argument set.
@@ -37,6 +39,7 @@ type CommandLine struct {
 	flagBackupTargetPath string
 	flagOmitEmpty        bool
 	flagQuitOnSoftError  bool
+	flagMultiThread      bool
 }
 
 // Parses and validates command line arguments.
@@ -53,6 +56,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	tag.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
 	tag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
 	tag.Bool(&cl.flagQuitOnSoftError, shortQuitOnSoftError, longQuitOnSoftError, "Exits the program if a soft error occurs")
+	tag.Bool(&cl.flagMultiThread, shortMultiThread, longMultiThread, "Enables multithreading")
 	tag.String(&cl.flagBackupTargetPath, "b", "backup", "Backup target path")
 	tag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
 	tag.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
@@ -129,6 +133,10 @@ func (r *CommandLine) FlagOmitEmpty() bool {
 
 func (r *CommandLine) FlagQuitOnSoftError() bool {
 	return r.flagQuitOnSoftError
+}
+
+func (r *CommandLine) FlagMultithreaded() bool {
+	return r.flagMultiThread
 }
 
 // Checks if all mandatory command line arguments are set dependent on the command.

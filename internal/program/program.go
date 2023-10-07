@@ -1,6 +1,7 @@
 package program
 
 import (
+	"context"
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/global"
@@ -8,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 func Run() error {
@@ -38,6 +40,13 @@ func Run() error {
 }
 
 func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
+	if global.CommandLine.FlagMultithreaded() {
+		return runMP(opts, fileFunc)
+	}
+	return runSP(opts, fileFunc)
+}
+
+func runSP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
 	for _, path := range global.CommandLine.Paths() {
 		info, err := os.Lstat(path)
 		if err != nil {
@@ -63,4 +72,23 @@ func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
 		}
 	}
 	return nil
+}
+
+func runMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	errs := make(chan error)
+	waitForErrorCollector := make(chan struct{})
+	waitForExaminers := new(sync.WaitGroup)
+	defer func() { <-waitForErrorCollector }()
+	defer close(errs)
+	defer waitForExaminers.Wait()
+	go func() {
+		defer close(waitForErrorCollector)
+		for err := <-errs; err != nil; err = <-errs {
+			global.DefaultLogger.Error(err)
+			cancel()
+		}
+		global.DefaultLogger.Debug("runMP: Error callback goroutine exits...")
+	}()
+	return runSP(opts, wrapFileExaminer(ctx, waitForExaminers, errs, fileFunc))
 }
