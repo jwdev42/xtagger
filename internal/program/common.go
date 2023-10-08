@@ -22,7 +22,7 @@ func createWalkDirOpts(detectProcessedFiles bool) *filesystem.WalkDirOpts {
 	return opts
 }
 
-func wrapFileExaminer(ctx context.Context, wg *sync.WaitGroup, errs chan<- error, payload filesystem.FileExaminer) filesystem.FileExaminer {
+func wrapFileExaminer(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, errs chan<- error, payload filesystem.FileExaminer) filesystem.FileExaminer {
 	return func(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -31,6 +31,7 @@ func wrapFileExaminer(ctx context.Context, wg *sync.WaitGroup, errs chan<- error
 		go func() {
 			defer wg.Done()
 			if err := payload(parent, dirEnt, opts); err != nil {
+				cancel()
 				errs <- err
 			}
 		}()

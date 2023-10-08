@@ -14,8 +14,11 @@ func tagFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) er
 	if err != nil {
 		return global.FilterSoftError(err)
 	}
+	global.DefaultLogger.Infof("Hashing file %s", path)
 	if err := f.CreateRecord(global.CommandLine.FlagNames()[0], global.CommandLine.FlagHash()); err != nil {
 		return global.FilterSoftError(err)
+	} else {
+		global.DefaultLogger.Infof("Successfully hashed file %s", path)
 	}
 	return nil
 }

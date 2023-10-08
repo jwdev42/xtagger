@@ -86,9 +86,8 @@ func runMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error
 		defer close(waitForErrorCollector)
 		for err := <-errs; err != nil; err = <-errs {
 			global.DefaultLogger.Error(err)
-			cancel()
 		}
 		global.DefaultLogger.Debug("runMP: Error callback goroutine exits...")
 	}()
-	return runSP(opts, wrapFileExaminer(ctx, waitForExaminers, errs, fileFunc))
+	return runSP(opts, wrapFileExaminer(ctx, cancel, waitForExaminers, errs, fileFunc))
 }

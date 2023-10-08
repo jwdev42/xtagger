@@ -88,7 +88,7 @@ func walkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
 			if opts.DupeDetector != nil {
 				realPath, err := filepath.EvalSymlinks(newPath)
 				if err != nil {
-					return err
+					return global.FilterSoftError(err)
 				}
 				if err := opts.DupeDetector.Register(strings.NewReader(realPath), opts.DetectorHash); err != nil {
 					global.DefaultLogger.Debugf("DupeDetector: Skipping already processed file: %s", newPath)
