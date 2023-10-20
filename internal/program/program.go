@@ -33,6 +33,8 @@ func Run() error {
 		return run(createWalkDirOpts(false), printFile)
 	case cli.CommandUntag:
 		return run(createWalkDirOpts(true), untagFile)
+	case cli.CommandInvalidate:
+		return run(createWalkDirOpts(true), invalidateFile)
 	default:
 		return fmt.Errorf("Unknown command \"%s\"", command)
 	}
