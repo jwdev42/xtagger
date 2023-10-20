@@ -31,7 +31,8 @@ const (
 type CommandLine struct {
 	command              Command //Specified command
 	paths                []string
-	flagLogLevel         logger.Level
+	flagLogLevel         logger.Level //parsed loglevel
+	flagLogLevelRaw      string       //unparsed loglevel
 	flagRecursive        bool
 	flagFollowSymlinks   bool
 	flagNames            []string
@@ -48,37 +49,29 @@ func ParseCommandLine() (*CommandLine, error) {
 	parser := flaggy.NewParser("xtagger")
 	//Intermediates for flags with custom types
 	var flagHash string
-	flagLogLevel := "error"
+	cl.flagLogLevelRaw = "error"
+	//Command print
+	print := flaggy.NewSubcommand(string(CommandPrint))
+	cl.addCommonArgs(print)
+	print.StringSlice(&cl.flagNames, shortName, longName, "Only print records matching name")
+	parser.AttachSubcommand(print, 1)
+	//Command recalc
+	recalc := flaggy.NewSubcommand(string(CommandRecalculate))
+	cl.addCommonArgs(recalc)
+	parser.AttachSubcommand(recalc, 1)
 	//Command tag
 	tag := flaggy.NewSubcommand(string(CommandTag))
+	cl.addCommonArgs(tag)
 	tag.StringSlice(&cl.flagNames, shortName, longName, "Name for the new record")
 	tag.String(&flagHash, shortHash, longHash, "Hashing algorithm")
-	tag.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
-	tag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
-	tag.Bool(&cl.flagQuitOnSoftError, shortQuitOnSoftError, longQuitOnSoftError, "Exits the program if a soft error occurs")
 	tag.Bool(&cl.flagMultiThread, shortMultiThread, longMultiThread, "Enables multithreading")
 	tag.String(&cl.flagBackupTargetPath, "b", "backup", "Backup target path")
-	tag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
-	tag.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
 	parser.AttachSubcommand(tag, 1)
 	//Command untag
 	untag := flaggy.NewSubcommand(string(CommandUntag))
-	untag.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
-	untag.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
-	untag.Bool(&cl.flagQuitOnSoftError, shortQuitOnSoftError, longQuitOnSoftError, "Exits the program if a soft error occurs")
+	cl.addCommonArgs(untag)
 	untag.StringSlice(&cl.flagNames, shortName, longName, "Name of the record to be deleted")
-	untag.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
-	untag.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
 	parser.AttachSubcommand(untag, 1)
-	//Command print
-	print := flaggy.NewSubcommand(string(CommandPrint))
-	print.Bool(&cl.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
-	print.Bool(&cl.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
-	print.Bool(&cl.flagQuitOnSoftError, shortQuitOnSoftError, longQuitOnSoftError, "Exits the program if a soft error occurs")
-	print.StringSlice(&cl.flagNames, shortName, longName, "Only print records matching name")
-	print.StringSlice(&cl.paths, shortPath, longPath, "Source path, can be specified multiple times")
-	print.String(&flagLogLevel, shortLogLevel, longLogLevel, "Desired log level, default is Error")
-	parser.AttachSubcommand(print, 1)
 	//Parse
 	if err := parser.Parse(); err != nil {
 		return nil, err
@@ -87,7 +80,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	cl.command = Command(parser.TrailingSubcommand().Name)
 	//Process custom types that flaggy doesn't support directly
 	cl.flagHash = hashes.Algo(flagHash)
-	logLevel, err := logger.ParseLevel(flagLogLevel)
+	logLevel, err := logger.ParseLevel(cl.flagLogLevelRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -165,4 +158,12 @@ func (r *CommandLine) validate() error {
 		r.flagHash = algo
 	}
 	return nil
+}
+
+func (r *CommandLine) addCommonArgs(sc *flaggy.Subcommand) {
+	sc.StringSlice(&r.paths, shortPath, longPath, "Source path, can be specified multiple times")
+	sc.Bool(&r.flagRecursive, shortRecursive, longRecursive, "Recurse into subdirectories")
+	sc.Bool(&r.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
+	sc.Bool(&r.flagQuitOnSoftError, shortQuitOnSoftError, longQuitOnSoftError, "Exits the program if a soft error occurs")
+	sc.String(&r.flagLogLevelRaw, shortLogLevel, longLogLevel, "Desired log level, default is Error")
 }
