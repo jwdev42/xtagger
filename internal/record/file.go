@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/pkg/xattr"
 	"hash"
@@ -45,37 +44,6 @@ func (r *File) hash(hash hash.Hash) error {
 	//hashing
 	hash.Reset()
 	return hashes.Hash(src, hash)
-}
-
-func (r *File) multiHash(hashMap map[hashes.Algo]hash.Hash) error {
-	//Open File
-	src, err := r.open()
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-	//read and hash
-	buf := make([]byte, global.BufSize)
-	var n int
-	var readErr error
-	for {
-		n, readErr = src.Read(buf)
-		if n > 0 {
-			for _, hasher := range hashMap {
-				_, err := hasher.Write(buf[:n])
-				if err != nil {
-					return err
-				}
-			}
-		}
-		if readErr == io.EOF {
-			break
-		}
-		if readErr != nil {
-			return readErr
-		}
-	}
-	return nil
 }
 
 // Hashes the file and writes a file copy to dst simultaneously.
