@@ -55,10 +55,10 @@ func ParseCommandLine() (*CommandLine, error) {
 	cl.addCommonArgs(print)
 	print.StringSlice(&cl.flagNames, shortName, longName, "Only print records matching name")
 	parser.AttachSubcommand(print, 1)
-	//Command recalc
-	recalc := flaggy.NewSubcommand(string(CommandRecalculate))
-	cl.addCommonArgs(recalc)
-	parser.AttachSubcommand(recalc, 1)
+	//Command invalidate
+	inv := flaggy.NewSubcommand(string(CommandInvalidate))
+	cl.addCommonArgs(inv)
+	parser.AttachSubcommand(inv, 1)
 	//Command tag
 	tag := flaggy.NewSubcommand(string(CommandTag))
 	cl.addCommonArgs(tag)
