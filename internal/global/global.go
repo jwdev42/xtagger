@@ -3,7 +3,6 @@ package global
 import (
 	"fmt"
 	"github.com/jwdev42/logger"
-	"github.com/jwdev42/xtagger/internal/cli"
 )
 
 const (
@@ -12,10 +11,11 @@ const (
 	ExitSoftError
 )
 
+const BufSize = 1048576 //Default buffer size is 1 MiB
+
 type ProgramExitCode int
 
 var DefaultLogger *logger.Logger //The program's default logger
-var CommandLine *cli.CommandLine
 var ExitCode ProgramExitCode = ExitSuccess
 var stopOnSoftError bool
 

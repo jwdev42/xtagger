@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/hashes"
-	iio "github.com/jwdev42/xtagger/internal/io"
 	"github.com/pkg/xattr"
 	"hash"
 	"io"
@@ -44,7 +44,38 @@ func (r *File) hash(hash hash.Hash) error {
 	defer src.Close()
 	//hashing
 	hash.Reset()
-	return iio.Hash(src, hash)
+	return hashes.Hash(src, hash)
+}
+
+func (r *File) multiHash(hashMap map[hashes.Algo]hash.Hash) error {
+	//Open File
+	src, err := r.open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	//read and hash
+	buf := make([]byte, global.BufSize)
+	var n int
+	var readErr error
+	for {
+		n, readErr = src.Read(buf)
+		if n > 0 {
+			for _, hasher := range hashMap {
+				_, err := hasher.Write(buf[:n])
+				if err != nil {
+					return err
+				}
+			}
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return readErr
+		}
+	}
+	return nil
 }
 
 // Hashes the file and writes a file copy to dst simultaneously.
@@ -57,7 +88,7 @@ func (r *File) hashCopy(dst io.Writer, hash hash.Hash) (written int64, err error
 	defer src.Close()
 	//hashing
 	hash.Reset()
-	return iio.HashCopy(dst, src, hash)
+	return hashes.HashCopy(dst, src, hash)
 }
 
 // Wraps os.Open()
@@ -71,38 +102,39 @@ func (r *File) Attributes() Attribute {
 	return r.attr
 }
 
-// Calculates the file's checksum, then checks each record if it is still valid.
-// Updates each record's field "valid". Returns only valid records.
-// Returns an empty slice if no valid records were found.
-func (r *File) Validate() (Attribute, error) {
-	//Create hashcache as different records could use different hash algorithms
-	hashCache := make(map[hashes.Algo]string)
-	validated := make(Attribute)
-	//Recalculate and compare hashes for all records
-	for name, rec := range r.attr {
-		targetSum, ok := hashCache[rec.HashAlgo]
-		if !ok {
-			//Hash the file if hash not in cache
-			hash := rec.HashAlgo.New()
-			if err := r.hash(hash); err != nil {
-				return nil, err
-			}
-			//Write hashsum to hashcache
-			hashCache[rec.HashAlgo] = fmt.Sprintf("%x", hash.Sum(nil))
-			targetSum = hashCache[rec.HashAlgo]
+func (r *File) InvalidateOutdatedEntries() error {
+	//Nothing to do if attribute is empty
+	if len(r.attr) < 1 {
+		return nil
+	}
+	//Initialize
+	hashMap := make(map[hashes.Algo]hash.Hash)
+	//Open File
+	src, err := r.open()
+	if err != nil {
+		return err
+	}
+	//Fill hashMap with all necessary hashing algorithms
+	for _, rec := range r.attr {
+		if hashMap[rec.HashAlgo] == nil {
+			hashMap[rec.HashAlgo] = rec.HashAlgo.New()
 		}
-		if rec.Checksum == targetSum {
-			rec.Valid = true
-			validated[name] = rec
-		} else {
+	}
+	//Calculate hashes for file
+	if err := hashes.MultiHash(src, hashMap); err != nil {
+		return err
+	}
+	//Invalidate entries with hash sums that do not match
+	for _, rec := range r.attr {
+		if rec.Checksum != fmt.Sprintf("%x", hashMap[rec.HashAlgo].Sum(nil)) {
 			rec.Valid = false
 		}
 	}
 	//Store records in xattrs
-	if err := r.attr.Store(r.path); err != nil {
-		return nil, err
+	if err := r.attr.FStore(src); err != nil {
+		return err
 	}
-	return validated, nil
+	return nil
 }
 
 func (r *File) CreateRecord(name string, hashAlgo hashes.Algo) error {

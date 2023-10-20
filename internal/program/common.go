@@ -3,16 +3,18 @@ package program
 import (
 	"context"
 	"crypto/sha256"
+	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/data"
-	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"io/fs"
 	"sync"
 )
 
+var commandLine *cli.CommandLine
+
 func createWalkDirOpts(detectProcessedFiles bool) *filesystem.WalkDirOpts {
 	var opts = new(filesystem.WalkDirOpts)
-	if global.CommandLine.FlagFollowSymlinks() {
+	if commandLine.FlagFollowSymlinks() {
 		opts.SymlinkMode = filesystem.SymlinksRejectNone
 	}
 	if detectProcessedFiles {

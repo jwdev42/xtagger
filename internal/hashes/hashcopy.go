@@ -1,12 +1,13 @@
-package io
+package hashes
 
 import (
+	"github.com/jwdev42/xtagger/internal/global"
 	"hash"
 	"io"
 )
 
 func HashCopy(dst io.Writer, src io.Reader, hash hash.Hash) (written int64, err error) {
-	buf := make([]byte, bufsize)
+	buf := make([]byte, global.BufSize)
 	for true {
 		r, err := src.Read(buf)
 		if r > 0 {

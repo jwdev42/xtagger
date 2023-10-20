@@ -32,6 +32,11 @@ func (a *Record) Equals(b *Record) bool {
 	return false
 }
 
+func (r *Record) Copy() *Record {
+	recCpy := *r
+	return &recCpy
+}
+
 func (r *Record) validate() error {
 	//Checks if receiver is nil (can be triggered by writing null in JSON)
 	if r == nil {

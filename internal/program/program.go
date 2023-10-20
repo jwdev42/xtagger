@@ -13,20 +13,20 @@ import (
 )
 
 func Run() error {
+	var err error
 	//Parse command line
-	cmdline, err := cli.ParseCommandLine()
+	commandLine, err = cli.ParseCommandLine()
 	if err != nil {
 		return fmt.Errorf("Command line error: %s", err)
 	}
-	global.CommandLine = cmdline
 	//Update Logger
-	global.DefaultLogger.SetLevel(cmdline.FlagLogLevel())
+	global.DefaultLogger.SetLevel(commandLine.FlagLogLevel())
 	//Set soft error behaviour
-	if cmdline.FlagQuitOnSoftError() {
+	if commandLine.FlagQuitOnSoftError() {
 		global.StopOnSoftError()
 	}
 	//Execute command-specific branch
-	switch command := cmdline.Command(); command {
+	switch command := commandLine.Command(); command {
 	case cli.CommandTag:
 		return run(createWalkDirOpts(true), tagFile)
 	case cli.CommandPrint:
@@ -40,14 +40,14 @@ func Run() error {
 }
 
 func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
-	if global.CommandLine.FlagMultithreaded() {
+	if commandLine.FlagMultithreaded() {
 		return runMP(opts, fileFunc)
 	}
 	return runSP(opts, fileFunc)
 }
 
 func runSP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
-	for _, path := range global.CommandLine.Paths() {
+	for _, path := range commandLine.Paths() {
 		info, err := os.Lstat(path)
 		if err != nil {
 			if global.FilterSoftError(err) == nil {
@@ -56,7 +56,7 @@ func runSP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error
 			return err
 		}
 		if info.IsDir() {
-			if !global.CommandLine.FlagRecursive() {
+			if !commandLine.FlagRecursive() {
 				if err := global.SoftErrorf("Recursive mode is not set and path is a directory: %s", path); err == nil {
 					continue
 				} else {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/xattr"
+	"os"
 )
 
 // Represents the whole content of a user.xtagger xattr entry
@@ -11,8 +12,18 @@ type Attribute map[string]*Record
 
 // Loads the xtagger extended attribute for path.
 func LoadAttribute(path string) (Attribute, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return FLoadAttribute(f)
+}
+
+// Loads the xtagger extended attribute for File f.
+func FLoadAttribute(f *os.File) (Attribute, error) {
 	//Read extended attribute
-	payload, err := xattr.Get(path, attrName)
+	payload, err := xattr.FGet(f, attrName)
 	if err != nil {
 		//Wrap error to be able to catch ENOATTR
 		return nil, fmt.Errorf("Failed to read extended attribute: %w", err)
@@ -31,6 +42,16 @@ func LoadAttribute(path string) (Attribute, error) {
 
 // Stores the xtagger extended attribute in path's inode.
 func (r Attribute) Store(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return r.FStore(f)
+}
+
+// Stores the xtagger extended attribute in File's inode.
+func (r Attribute) FStore(f *os.File) error {
 	if r == nil {
 		panic("BUG: Calling Store() with a nil receiver is prohibited")
 	}
@@ -44,7 +65,7 @@ func (r Attribute) Store(path string) error {
 		return fmt.Errorf("Failed to encode json: %s", err)
 	}
 	//Write extended attribute
-	if err := xattr.Set(path, attrName, payload); err != nil {
+	if err := xattr.FSet(f, attrName, payload); err != nil {
 		return fmt.Errorf("Failed to write extended attribute: %s", err)
 	}
 	return nil
