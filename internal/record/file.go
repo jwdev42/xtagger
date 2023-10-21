@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"slices"
 )
 
 // Accesses and manipulates the records of a particular file
@@ -70,7 +71,14 @@ func (r *File) Attributes() Attribute {
 	return r.attr
 }
 
-func (r *File) InvalidateOutdatedEntries(revalidate bool) error {
+func (r *File) InvalidateOutdatedEntries(names []string, revalidate bool) error {
+	nameMatches := func(name string) bool {
+		if names == nil {
+			//Name matching is disabled if names is nil
+			return true
+		}
+		return slices.Contains(names, name)
+	}
 	//Nothing to do if attribute is empty
 	if len(r.attr) < 1 {
 		return nil
@@ -83,7 +91,10 @@ func (r *File) InvalidateOutdatedEntries(revalidate bool) error {
 		return err
 	}
 	//Fill hashMap with all necessary hashing algorithms
-	for _, rec := range r.attr {
+	for name, rec := range r.attr {
+		if !nameMatches(name) {
+			continue
+		}
 		if hashMap[rec.HashAlgo] == nil {
 			hashMap[rec.HashAlgo] = rec.HashAlgo.New()
 		}
@@ -93,7 +104,10 @@ func (r *File) InvalidateOutdatedEntries(revalidate bool) error {
 		return err
 	}
 	//Invalidate entries with hash sums that do not match
-	for _, rec := range r.attr {
+	for name, rec := range r.attr {
+		if !nameMatches(name) {
+			continue
+		}
 		if rec.Checksum != fmt.Sprintf("%x", hashMap[rec.HashAlgo].Sum(nil)) {
 			rec.Valid = false
 		} else if revalidate {

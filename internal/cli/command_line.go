@@ -56,25 +56,33 @@ func ParseCommandLine() (*CommandLine, error) {
 	//Command print
 	print := flaggy.NewSubcommand(string(CommandPrint))
 	cl.addCommonArgs(print)
-	print.StringSlice(&cl.flagNames, shortName, longName, "Only print records matching name")
+	print.StringSlice(&cl.flagNames, shortName, longName,
+		"Only print records matching name")
 	parser.AttachSubcommand(print, 1)
 	//Command invalidate
 	inv := flaggy.NewSubcommand(string(CommandInvalidate))
 	cl.addCommonArgs(inv)
-	inv.Bool(&cl.flagAllowRevalidation, shortAllowRevalidation, longAllowRevalidation, "Allow revalidation of invalid entries if both checksums match")
+	inv.StringSlice(&cl.flagNames, shortName, longName,
+		"Restricts invalidation to the given record name(s). Can be set multiple times.")
+	inv.Bool(&cl.flagAllowRevalidation,
+		shortAllowRevalidation,
+		longAllowRevalidation,
+		"Allow revalidation of invalid entries if both checksums match")
 	parser.AttachSubcommand(inv, 1)
 	//Command tag
 	tag := flaggy.NewSubcommand(string(CommandTag))
 	cl.addCommonArgs(tag)
 	tag.StringSlice(&cl.flagNames, shortName, longName, "Name for the new record")
 	tag.String(&flagHash, shortHash, longHash, "Hashing algorithm")
-	tag.Bool(&cl.flagMultiThread, shortMultiThread, longMultiThread, "Enables multithreading")
+	tag.Bool(&cl.flagMultiThread, shortMultiThread, longMultiThread,
+		"Enables multithreading")
 	tag.String(&cl.flagBackupTargetPath, "b", "backup", "Backup target path")
 	parser.AttachSubcommand(tag, 1)
 	//Command untag
 	untag := flaggy.NewSubcommand(string(CommandUntag))
 	cl.addCommonArgs(untag)
-	untag.StringSlice(&cl.flagNames, shortName, longName, "Name of the record to be deleted")
+	untag.StringSlice(&cl.flagNames, shortName, longName,
+		"Name of the record to be deleted")
 	parser.AttachSubcommand(untag, 1)
 	//Parse
 	if err := parser.Parse(); err != nil {

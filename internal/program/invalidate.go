@@ -14,5 +14,7 @@ func invalidateFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirO
 	if err != nil {
 		return global.FilterSoftError(err)
 	}
-	return f.InvalidateOutdatedEntries(commandLine.FlagAllowRevalidation())
+	return f.InvalidateOutdatedEntries(
+		commandLine.FlagNames(),
+		commandLine.FlagAllowRevalidation())
 }
