@@ -9,38 +9,41 @@ import (
 )
 
 const (
-	shortName            = "n"
-	longName             = "name"
-	shortHash            = "H"
-	longHash             = "hash"
-	shortRecursive       = "r"
-	longRecursive        = "recursive"
-	shortFollowSymlinks  = "L"
-	longFollowSymlinks   = "follow-symlinks"
-	shortPath            = "p"
-	longPath             = "path"
-	shortLogLevel        = "ll"
-	longLogLevel         = "loglevel"
-	shortQuitOnSoftError = "qose"
-	longQuitOnSoftError  = "quit-on-soft-error"
-	shortMultiThread     = "MP"
-	longMultiThread      = "multithread"
+	shortName              = "n"
+	longName               = "name"
+	shortHash              = "H"
+	longHash               = "hash"
+	shortRecursive         = "r"
+	longRecursive          = "recursive"
+	shortFollowSymlinks    = "L"
+	longFollowSymlinks     = "follow-symlinks"
+	shortPath              = "p"
+	longPath               = "path"
+	shortLogLevel          = "ll"
+	longLogLevel           = "loglevel"
+	shortQuitOnSoftError   = "qose"
+	longQuitOnSoftError    = "quit-on-soft-error"
+	shortMultiThread       = "MP"
+	longMultiThread        = "multithread"
+	shortAllowRevalidation = "reval"
+	longAllowRevalidation  = "allow-revalidation"
 )
 
 // Represents a parsed command line argument set.
 type CommandLine struct {
-	command              Command //Specified command
-	paths                []string
-	flagLogLevel         logger.Level //parsed loglevel
-	flagLogLevelRaw      string       //unparsed loglevel
-	flagRecursive        bool
-	flagFollowSymlinks   bool
-	flagNames            []string
-	flagHash             hashes.Algo
-	flagBackupTargetPath string
-	flagOmitEmpty        bool
-	flagQuitOnSoftError  bool
-	flagMultiThread      bool
+	command               Command //Specified command
+	paths                 []string
+	flagLogLevel          logger.Level //parsed loglevel
+	flagLogLevelRaw       string       //unparsed loglevel
+	flagRecursive         bool
+	flagFollowSymlinks    bool
+	flagNames             []string
+	flagHash              hashes.Algo
+	flagBackupTargetPath  string
+	flagOmitEmpty         bool
+	flagQuitOnSoftError   bool
+	flagMultiThread       bool
+	flagAllowRevalidation bool
 }
 
 // Parses and validates command line arguments.
@@ -58,6 +61,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	//Command invalidate
 	inv := flaggy.NewSubcommand(string(CommandInvalidate))
 	cl.addCommonArgs(inv)
+	inv.Bool(&cl.flagAllowRevalidation, shortAllowRevalidation, longAllowRevalidation, "Allow revalidation of invalid entries if both checksums match")
 	parser.AttachSubcommand(inv, 1)
 	//Command tag
 	tag := flaggy.NewSubcommand(string(CommandTag))
@@ -130,6 +134,10 @@ func (r *CommandLine) FlagQuitOnSoftError() bool {
 
 func (r *CommandLine) FlagMultithreaded() bool {
 	return r.flagMultiThread
+}
+
+func (r *CommandLine) FlagAllowRevalidation() bool {
+	return r.flagAllowRevalidation
 }
 
 // Checks if all mandatory command line arguments are set dependent on the command.

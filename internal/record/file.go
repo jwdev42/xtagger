@@ -70,7 +70,7 @@ func (r *File) Attributes() Attribute {
 	return r.attr
 }
 
-func (r *File) InvalidateOutdatedEntries() error {
+func (r *File) InvalidateOutdatedEntries(revalidate bool) error {
 	//Nothing to do if attribute is empty
 	if len(r.attr) < 1 {
 		return nil
@@ -96,6 +96,8 @@ func (r *File) InvalidateOutdatedEntries() error {
 	for _, rec := range r.attr {
 		if rec.Checksum != fmt.Sprintf("%x", hashMap[rec.HashAlgo].Sum(nil)) {
 			rec.Valid = false
+		} else if revalidate {
+			rec.Valid = true
 		}
 	}
 	//Store records in xattrs
