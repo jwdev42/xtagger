@@ -26,6 +26,10 @@ func printFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) 
 	if commandLine.FlagOmitEmpty() && len(f.Attributes()) == 0 {
 		return nil
 	}
+	if commandLine.FlagPrint0() {
+		_, err := printMe.Print0(path)
+		return err
+	}
 	fmt.Printf("%s\n", f)
 	return nil
 }

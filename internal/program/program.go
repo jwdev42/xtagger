@@ -6,6 +6,7 @@ import (
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
+	"github.com/jwdev42/xtagger/internal/io/printer"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -19,6 +20,8 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("Command line error: %s", err)
 	}
+	//Setup printer
+	printMe = printer.NewPrinter(os.Stdout)
 	//Update Logger
 	global.DefaultLogger.SetLevel(commandLine.FlagLogLevel())
 	//Set soft error behaviour

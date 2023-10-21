@@ -14,7 +14,13 @@ func invalidateFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirO
 	if err != nil {
 		return global.FilterSoftError(err)
 	}
-	return f.InvalidateOutdatedEntries(
-		commandLine.FlagNames(),
-		commandLine.FlagAllowRevalidation())
+	if err := f.InvalidateOutdatedEntries(commandLine.FlagNames(), commandLine.FlagAllowRevalidation()); err != nil {
+		return global.FilterSoftError(err)
+	}
+	if commandLine.FlagPrint0() {
+		if _, err := printMe.Print0(path); err != nil {
+			return err
+		}
+	}
+	return nil
 }

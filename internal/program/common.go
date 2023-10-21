@@ -6,11 +6,13 @@ import (
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/data"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
+	"github.com/jwdev42/xtagger/internal/io/printer"
 	"io/fs"
 	"sync"
 )
 
 var commandLine *cli.CommandLine
+var printMe *printer.Printer
 
 func createWalkDirOpts(detectProcessedFiles bool) *filesystem.WalkDirOpts {
 	var opts = new(filesystem.WalkDirOpts)

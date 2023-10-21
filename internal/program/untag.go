@@ -9,5 +9,14 @@ import (
 )
 
 func untagFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
-	return global.FilterSoftError(record.PurgeFile(filepath.Join(parent, dirEnt.Name())))
+	path := filepath.Join(parent, dirEnt.Name())
+	if err := record.PurgeFile(path); err != nil {
+		return global.FilterSoftError(err)
+	}
+	if commandLine.FlagPrint0() {
+		if _, err := printMe.Print0(path); err != nil {
+			return err
+		}
+	}
+	return nil
 }

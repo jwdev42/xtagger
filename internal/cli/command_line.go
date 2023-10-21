@@ -27,6 +27,8 @@ const (
 	longMultiThread        = "multithread"
 	shortAllowRevalidation = "reval"
 	longAllowRevalidation  = "allow-revalidation"
+	shortPrint0            = "print0"
+	longPrint0             = shortPrint0
 )
 
 // Represents a parsed command line argument set.
@@ -44,6 +46,7 @@ type CommandLine struct {
 	flagQuitOnSoftError   bool
 	flagMultiThread       bool
 	flagAllowRevalidation bool
+	flagPrint0            bool
 }
 
 // Parses and validates command line arguments.
@@ -148,6 +151,10 @@ func (r *CommandLine) FlagAllowRevalidation() bool {
 	return r.flagAllowRevalidation
 }
 
+func (r *CommandLine) FlagPrint0() bool {
+	return r.flagPrint0
+}
+
 // Checks if all mandatory command line arguments are set dependent on the command.
 func (r *CommandLine) validate() error {
 	if r.paths == nil || len(r.paths) < 1 {
@@ -182,4 +189,5 @@ func (r *CommandLine) addCommonArgs(sc *flaggy.Subcommand) {
 	sc.Bool(&r.flagFollowSymlinks, shortFollowSymlinks, longFollowSymlinks, "Follow symlinks")
 	sc.Bool(&r.flagQuitOnSoftError, shortQuitOnSoftError, longQuitOnSoftError, "Exits the program if a soft error occurs")
 	sc.String(&r.flagLogLevelRaw, shortLogLevel, longLogLevel, "Desired log level, default is Error")
+	sc.Bool(&r.flagPrint0, shortPrint0, longPrint0, "Prints the path of every successfully processed file to output, appends null terminator after each path")
 }
