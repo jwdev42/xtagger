@@ -19,6 +19,8 @@ const (
 	longFollowSymlinks     = "follow-symlinks"
 	shortPath              = "p"
 	longPath               = "path"
+	shortPrintMode         = "m"
+	longPrintMode          = "mode"
 	shortLogLevel          = "ll"
 	longLogLevel           = "loglevel"
 	shortQuitOnSoftError   = "qose"
@@ -35,6 +37,7 @@ const (
 type CommandLine struct {
 	command               Command //Specified command
 	paths                 []string
+	flagPrintMode         PrintMode
 	flagLogLevel          logger.Level //parsed loglevel
 	flagLogLevelRaw       string       //unparsed loglevel
 	flagRecursive         bool
@@ -42,7 +45,6 @@ type CommandLine struct {
 	flagNames             []string
 	flagHash              hashes.Algo
 	flagBackupTargetPath  string
-	flagOmitEmpty         bool
 	flagQuitOnSoftError   bool
 	flagMultiThread       bool
 	flagAllowRevalidation bool
@@ -55,10 +57,13 @@ func ParseCommandLine() (*CommandLine, error) {
 	parser := flaggy.NewParser("xtagger")
 	//Intermediates for flags with custom types
 	var flagHash string
+	var flagPrintModeRaw string
 	cl.flagLogLevelRaw = "error"
 	//Command print
+	flagPrintModeRaw = string(PrintModeValidOnly)
 	print := flaggy.NewSubcommand(string(CommandPrint))
 	cl.addCommonArgs(print)
+	print.String(&flagPrintModeRaw, shortPrintMode, longPrintMode, "Print mode selection")
 	print.StringSlice(&cl.flagNames, shortName, longName,
 		"Only print records matching name")
 	parser.AttachSubcommand(print, 1)
@@ -100,6 +105,10 @@ func ParseCommandLine() (*CommandLine, error) {
 		return nil, err
 	}
 	cl.flagLogLevel = logLevel
+	cl.flagPrintMode, err = ParsePrintMode(flagPrintModeRaw)
+	if err != nil {
+		return nil, fmt.Errorf("Flag %q: %s", longPrintMode, err)
+	}
 	//Validate CommandLine
 	if err := cl.validate(); err != nil {
 		return nil, err
@@ -113,6 +122,10 @@ func (r *CommandLine) Command() Command {
 
 func (r *CommandLine) Paths() []string {
 	return r.paths
+}
+
+func (r *CommandLine) FlagPrintMode() PrintMode {
+	return r.flagPrintMode
 }
 
 func (r *CommandLine) FlagLogLevel() logger.Level {
@@ -133,10 +146,6 @@ func (r *CommandLine) FlagRecursive() bool {
 
 func (r *CommandLine) FlagFollowSymlinks() bool {
 	return r.flagFollowSymlinks
-}
-
-func (r *CommandLine) FlagOmitEmpty() bool {
-	return r.flagOmitEmpty
 }
 
 func (r *CommandLine) FlagQuitOnSoftError() bool {

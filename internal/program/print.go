@@ -2,6 +2,7 @@ package program
 
 import (
 	"fmt"
+	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"io/fs"
@@ -23,8 +24,40 @@ func printFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) 
 	if err != nil {
 		return err
 	}
-	if commandLine.FlagOmitEmpty() && len(f.Attributes()) == 0 {
+	attrs := f.Attributes()
+	//Filter empty entries if PrintModeOmitEmpty is set
+	if mode := commandLine.FlagPrintMode(); len(attrs) == 0 && (mode == cli.PrintModeOmitEmpty || mode == cli.PrintModeValidOnly) {
 		return nil
+	}
+	//Filter by name if at least one name restriction is set
+	if names := commandLine.FlagNames(); names != nil {
+		var found bool
+		for _, name := range names {
+			if rec := attrs[name]; rec != nil {
+				//Skip invalid records if mode is PrintModeValidOnly
+				if commandLine.FlagPrintMode() == cli.PrintModeValidOnly && !rec.Valid {
+					continue
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil
+		}
+	} else {
+		//skip entries that have no valid record if mode is PrintModeValidOnly
+		if commandLine.FlagPrintMode() == cli.PrintModeValidOnly {
+			var hasValidRecord bool
+			for _, rec := range attrs {
+				if rec.Valid {
+					hasValidRecord = true
+				}
+			}
+			if !hasValidRecord {
+				return nil
+			}
+		}
 	}
 	if commandLine.FlagPrint0() {
 		_, err := printMe.Print0(path)
