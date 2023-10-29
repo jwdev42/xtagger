@@ -2,10 +2,8 @@ package record
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/hashes"
-	"github.com/pkg/xattr"
 	"hash"
 	"io"
 	"io/fs"
@@ -22,11 +20,7 @@ type File struct {
 func NewFile(path string) (*File, error) {
 	attr, err := LoadAttribute(path)
 	if err != nil {
-		if errors.Is(err, xattr.ENOATTR) {
-			attr = make(Attribute)
-		} else {
-			return nil, err
-		}
+		return nil, err
 	}
 	return &File{
 		path: path,

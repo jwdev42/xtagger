@@ -2,6 +2,7 @@ package record
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/pkg/xattr"
 	"os"
@@ -24,9 +25,11 @@ func LoadAttribute(path string) (Attribute, error) {
 func FLoadAttribute(f *os.File) (Attribute, error) {
 	//Read extended attribute
 	payload, err := xattr.FGet(f, attrName)
-	if err != nil {
-		//Wrap error to be able to catch ENOATTR
-		return nil, fmt.Errorf("Failed to read extended attribute: %w", err)
+	if errors.Is(err, xattr.ENOATTR) {
+		//Create a new Attribute if file doesn't have one yet
+		return make(Attribute), nil
+	} else if err != nil {
+		return nil, fmt.Errorf("Failed to read extended attribute: %s", err)
 	}
 	//Decode JSON
 	attr := make(Attribute)
