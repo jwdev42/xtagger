@@ -30,8 +30,7 @@ If invalid is set, only files that don't have a valid record will be tagged. If 
 ### command untag
     xbackup untag CONSTRAINT for PATHS
 #### tag-specific nonterminals
-    CONSTRAINT := { all | invalid | REMOVE_CONSTRAINT }
-    REMOVE_CONSTRAINT := tag NAME [ if invalid ]
+    CONSTRAINT := { all | invalid | NAMES [ if invalid ] }
 ##### all
 All removes all records.
 ##### invalid
