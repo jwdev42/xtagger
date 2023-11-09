@@ -89,6 +89,13 @@ func (r Attribute) MostRecent() (name string, rec *Record) {
 	return name, rec
 }
 
+func (r Attribute) Exists(name string) bool {
+	if r[name] != nil {
+		return true
+	}
+	return false
+}
+
 func (r Attribute) FilterByName(name ...string) Attribute {
 	attr := make(Attribute)
 	for _, key := range name {
