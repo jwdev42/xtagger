@@ -11,7 +11,7 @@ import (
 
 func untagFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
 	path := filepath.Join(parent, dirEnt.Name())
-	if commandLine.FlagNames() != nil {
+	if commandLine.Names() != nil {
 		//Open file
 		f, err := os.Open(path)
 		defer f.Close()
@@ -23,7 +23,7 @@ func untagFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) 
 			return err
 		}
 		initialLength := len(attr)
-		for _, name := range commandLine.FlagNames() {
+		for _, name := range commandLine.Names() {
 			delete(attr, name)
 		}
 		if initialLength == len(attr) {
