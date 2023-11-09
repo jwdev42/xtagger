@@ -14,10 +14,10 @@ func untagFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) 
 	if commandLine.Names() != nil {
 		//Open file
 		f, err := os.Open(path)
-		defer f.Close()
 		if err != nil {
 			return err
 		}
+		defer f.Close()
 		attr, err := record.FLoadAttribute(f)
 		if err != nil {
 			return err
