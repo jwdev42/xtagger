@@ -31,21 +31,21 @@ func Run() error {
 	//Execute command-specific branch
 	switch command := commandLine.Command(); command {
 	case cli.CommandTag:
-		return run(createWalkDirOpts(true), tagFile)
+		return runWithOptionalMP(createWalkDirOpts(true), tagFile)
 	case cli.CommandPrint:
-		return run(createWalkDirOpts(false), printFile)
+		return runSP(createWalkDirOpts(false), printFile)
 	case cli.CommandUntag:
-		return run(createWalkDirOpts(true), untagFile)
+		return runSP(createWalkDirOpts(true), untagFile)
 	case cli.CommandInvalidate:
-		return run(createWalkDirOpts(true), invalidateFile)
+		return runSP(createWalkDirOpts(true), invalidateFile)
 	default:
 		return fmt.Errorf("Unknown command \"%s\"", command)
 	}
 	return nil
 }
 
-func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
-	if commandLine.FlagMultithreaded() {
+func runWithOptionalMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
+	if commandLine.FlagMultiThread() {
 		return runMP(opts, fileFunc)
 	}
 	return runSP(opts, fileFunc)
@@ -61,8 +61,8 @@ func runSP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error
 			return err
 		}
 		if info.IsDir() {
-			if !commandLine.FlagRecursive() {
-				if err := global.SoftErrorf("Recursive mode is not set and path is a directory: %s", path); err == nil {
+			if commandLine.ForbidRecursion() {
+				if err := global.SoftErrorf("Recursion is forbidden, cannot descend in directory %s", path); err == nil {
 					continue
 				} else {
 					return err

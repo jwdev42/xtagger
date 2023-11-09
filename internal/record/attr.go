@@ -22,6 +22,7 @@ func LoadAttribute(path string) (Attribute, error) {
 }
 
 // Loads the xtagger extended attribute for File f.
+// Returns an empty Attribute if the file does not have an extended attribute.
 func FLoadAttribute(f *os.File) (Attribute, error) {
 	//Read extended attribute
 	payload, err := xattr.FGet(f, attrName)
@@ -86,6 +87,16 @@ func (r Attribute) MostRecent() (name string, rec *Record) {
 		}
 	}
 	return name, rec
+}
+
+func (r Attribute) FilterByName(name ...string) Attribute {
+	attr := make(Attribute)
+	for _, key := range name {
+		if rec := r[key]; rec != nil {
+			attr[key] = rec
+		}
+	}
+	return attr
 }
 
 func (r Attribute) validate() error {
