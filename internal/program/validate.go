@@ -13,6 +13,14 @@ import (
 )
 
 func invalidateFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
+	return reOrInvalidateFile(false, parent, dirEnt, opts)
+}
+
+func revalidateFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
+	return reOrInvalidateFile(true, parent, dirEnt, opts)
+}
+
+func reOrInvalidateFile(revalidate bool, parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
 	path := filepath.Join(parent, dirEnt.Name())
 	names := commandLine.Names()
 	filteredRecords := func(attr record.Attribute) record.Attribute {
@@ -51,12 +59,21 @@ func invalidateFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirO
 	if err := hashes.MultiHash(f, hashMap); err != nil {
 		return global.FilterSoftError(err)
 	}
-	//Invalidate outdated records
+
 	var modified bool
 	for _, rec := range filteredRecords(attr) {
-		if fmt.Sprintf("%x", hashMap[rec.HashAlgo].Sum(nil)) != rec.Checksum {
-			rec.Valid = false
-			modified = true
+		if revalidate {
+			//Revalidate outdated records
+			if fmt.Sprintf("%x", hashMap[rec.HashAlgo].Sum(nil)) == rec.Checksum {
+				rec.Valid = true
+				modified = true
+			}
+		} else {
+			//Invalidate outdated records
+			if fmt.Sprintf("%x", hashMap[rec.HashAlgo].Sum(nil)) != rec.Checksum {
+				rec.Valid = false
+				modified = true
+			}
 		}
 	}
 	if !modified {

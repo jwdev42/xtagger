@@ -33,11 +33,13 @@ func Run() error {
 	case cli.CommandTag:
 		return runWithOptionalMP(createWalkDirOpts(true), tagFile)
 	case cli.CommandPrint:
-		return runSP(createWalkDirOpts(false), printFile)
+		return run(createWalkDirOpts(false), printFile)
 	case cli.CommandUntag:
-		return runSP(createWalkDirOpts(true), untagFile)
+		return run(createWalkDirOpts(true), untagFile)
 	case cli.CommandInvalidate:
-		return runSP(createWalkDirOpts(true), invalidateFile)
+		return run(createWalkDirOpts(true), invalidateFile)
+	case cli.CommandRevalidate:
+		return run(createWalkDirOpts(true), revalidateFile)
 	default:
 		return fmt.Errorf("Unknown command \"%s\"", command)
 	}
@@ -48,10 +50,10 @@ func runWithOptionalMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExa
 	if commandLine.FlagMultiThread() {
 		return runMP(opts, fileFunc)
 	}
-	return runSP(opts, fileFunc)
+	return run(opts, fileFunc)
 }
 
-func runSP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
+func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
 	for _, path := range commandLine.Paths() {
 		info, err := os.Lstat(path)
 		if err != nil {
@@ -94,5 +96,5 @@ func runMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error
 		}
 		global.DefaultLogger.Debug("runMP: Error callback goroutine exits...")
 	}()
-	return runSP(opts, wrapFileExaminer(ctx, cancel, waitForExaminers, errs, fileFunc))
+	return run(opts, wrapFileExaminer(ctx, cancel, waitForExaminers, errs, fileFunc))
 }
