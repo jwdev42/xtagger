@@ -13,6 +13,7 @@ import (
 	"sync"
 )
 
+// Program entry point called by main().
 func Run() error {
 	var err error
 	//Parse command line
@@ -46,6 +47,7 @@ func Run() error {
 	return nil
 }
 
+// Runs fileFunc multithreaded if the corresponding flag was set.
 func runWithOptionalMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
 	if commandLine.FlagMultiThread() {
 		return runMP(opts, fileFunc)
@@ -53,6 +55,7 @@ func runWithOptionalMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExa
 	return run(opts, fileFunc)
 }
 
+// Main runner for fileFunc, singlethreaded by default, can be wrapped by runMP for multithreading.
 func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
 	for _, path := range commandLine.Paths() {
 		info, err := os.Lstat(path)
@@ -81,6 +84,7 @@ func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
 	return nil
 }
 
+// Wrapper for run that runs fileFunc in parallel.
 func runMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	errs := make(chan error)
