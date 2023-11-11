@@ -84,17 +84,35 @@ func (r *parser) parseCommandTag() error {
 }
 
 func (r *parser) parseCommandPrint() error {
-	//Parse "for"
-	if err := r.parseLiteral("for"); err != nil {
-		//If "for" was not found, parse print constraint, then "for"
-		if err := r.parsePrintConstraint(); err != nil {
-			return err
-		}
+	tok, ok := r.tok()
+	if !ok {
+		return fmt.Errorf("Expected CONSTRAINT or \"records\" or \"for\", got \"%s\"", tok)
+	}
+	//Parse CONSTRAINT or "records" or "for"
+	switch tok {
+	case "records":
+		//Parse "records", then "for", then PATHS
+		r.commandLine.printRecords = true
+		r.adv()
+		fallthrough
+	case "for":
+		//Parse "for", then PATHS
 		if err := r.parseLiteral("for"); err != nil {
 			return err
 		}
+		return r.parsePathsUntilEOF()
 	}
-	//Parse path(s)
+	//Parse CONSTRAINT, then optionally "records", then "for", then PATHS
+	if err := r.parsePrintConstraint(); err != nil {
+		return err
+	}
+	if err := r.parseLiteral("records"); err == nil {
+		r.commandLine.printRecords = true
+	}
+	if err := r.parseLiteral("for"); err != nil {
+		return err
+	}
+	//Parse PATHS
 	return r.parsePathsUntilEOF()
 }
 

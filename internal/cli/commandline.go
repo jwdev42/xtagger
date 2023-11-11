@@ -21,6 +21,7 @@ type CommandLine struct {
 	flagMultiThread     bool
 	flagPrint0          bool
 	forbidRecursion     bool
+	printRecords        bool
 	tagConstraint       TagConstraint
 	untagConstraint     UntagConstraint
 	printConstraint     PrintConstraint
@@ -60,6 +61,10 @@ func (r *CommandLine) FlagMultiThread() bool {
 
 func (r *CommandLine) FlagPrint0() bool {
 	return r.flagPrint0
+}
+
+func (r *CommandLine) FlagPrintRecords() bool {
+	return r.printRecords
 }
 
 func (r *CommandLine) ForbidRecursion() bool {

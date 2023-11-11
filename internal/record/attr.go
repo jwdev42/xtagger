@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/pkg/xattr"
+	"io"
 	"os"
 )
 
@@ -104,6 +105,21 @@ func (r Attribute) FilterByName(name ...string) Attribute {
 		}
 	}
 	return attr
+}
+
+func (r Attribute) FprintRecordsWithPath(w io.Writer, path string) (n int, err error) {
+	container := struct {
+		Path    string
+		Records Attribute
+	}{
+		Path:    path,
+		Records: r,
+	}
+	payload, err := json.MarshalIndent(&container, "", "\t")
+	if err != nil {
+		return 0, err
+	}
+	return fmt.Fprintf(w, "%s\n", payload)
 }
 
 func (r Attribute) validate() error {
