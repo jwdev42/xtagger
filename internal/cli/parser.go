@@ -29,6 +29,11 @@ func (r *parser) tok() (string, bool) {
 	return "EOF", false
 }
 
+func (r *parser) error(expected ...string) error {
+	tok, _ := r.tok()
+	return fmt.Errorf("[Token at index %03d] Expected \"%s\", got \"%s\"", r.pos, strings.Join(expected, "\" or \""), tok)
+}
+
 // Parser entry point, parses a command.
 func (r *parser) parseCommand() error {
 	tok, ok := r.tok()
@@ -84,31 +89,27 @@ func (r *parser) parseCommandTag() error {
 }
 
 func (r *parser) parseCommandPrint() error {
-	tok, ok := r.tok()
-	if !ok {
-		return fmt.Errorf("Expected CONSTRAINT or \"records\" or \"for\", got \"%s\"", tok)
-	}
-	//Parse CONSTRAINT or "records" or "for"
-	switch tok {
-	case "records":
-		//Parse "records", then "for", then PATHS
-		r.commandLine.printRecords = true
-		r.adv()
-		fallthrough
-	case "for":
-		//Parse "for", then PATHS
+	if err := r.parseLiteral("untagged"); err == nil {
+		//Parse "for" after "untagged"
 		if err := r.parseLiteral("for"); err != nil {
 			return err
 		}
+		//Parse PATHS
 		return r.parsePathsUntilEOF()
 	}
-	//Parse CONSTRAINT, then optionally "records", then "for", then PATHS
-	if err := r.parsePrintConstraint(); err != nil {
-		return err
-	}
+	//Parse optional CONSTRAINT, return value can therefore be ignored
+	r.parsePrintConstraint()
+	//Parse optional literal "records"
 	if err := r.parseLiteral("records"); err == nil {
 		r.commandLine.printRecords = true
 	}
+	//Parse optional "by" + NAMES
+	if err := r.parseLiteral("by"); err == nil {
+		if err := r.parseNames(); err != nil {
+			return err
+		}
+	}
+	//Parse "for"
 	if err := r.parseLiteral("for"); err != nil {
 		return err
 	}
@@ -156,7 +157,7 @@ func (r *parser) parseTagConstraint() error {
 	case "invalid":
 		r.commandLine.tagConstraint = TagConstraintInvalid
 	default:
-		return fmt.Errorf("Unknown constraint: %q", tok)
+		return r.error("untagged", "invalid")
 	}
 	r.adv()
 	return nil
@@ -165,17 +166,15 @@ func (r *parser) parseTagConstraint() error {
 func (r *parser) parsePrintConstraint() error {
 	tok, ok := r.tok()
 	if !ok {
-		return io.EOF
+		return r.error("invalid", "valid")
 	}
 	switch tok {
-	case "untagged":
-		r.commandLine.printConstraint = PrintConstraintUntagged
 	case "invalid":
 		r.commandLine.printConstraint = PrintConstraintInvalid
 	case "valid":
 		r.commandLine.printConstraint = PrintConstraintValid
 	default:
-		return fmt.Errorf("Unknown constraint: %q", tok)
+		return r.error("invalid", "valid")
 	}
 	r.adv()
 	return nil
@@ -237,7 +236,7 @@ func (r *parser) parseNames() error {
 	}
 	//parse optional "and"
 	if err := r.parseLiteral("and"); err != nil {
-		//done if token is not end
+		//done if token is not "and"
 		return nil
 	}
 	//recurse if optional "and" was parsed
@@ -280,13 +279,12 @@ func (r *parser) parseName() error {
 }
 
 func (r *parser) parseLiteral(literal string) error {
-	const msg = "Expected literal %q, got %q"
 	tok, ok := r.tok()
 	if !ok {
 		return io.EOF
 	}
 	if tok != literal {
-		return fmt.Errorf(msg, literal, tok)
+		return r.error(literal)
 	}
 	r.adv()
 	return nil
