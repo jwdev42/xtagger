@@ -1,4 +1,4 @@
-# xbackup
+# xtagger
 ## usage
     xtagger [ OPTIONS ] COMMAND
 ## commands
