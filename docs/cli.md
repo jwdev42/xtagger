@@ -9,7 +9,7 @@
     PATH is a path to a file or directory.
     OPTIONS refer to command line options.
 ### command print
-    print [ CONSTRAINT ] for PATHS
+    print [ CONSTRAINT ] [ records ] for PATHS
 #### tag-specific nonterminals
     CONSTRAINT := { valid | invalid | untagged }
 ##### valid
