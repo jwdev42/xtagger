@@ -11,13 +11,13 @@ import (
 
 func untagFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
 	path := filepath.Join(parent, dirEnt.Name())
+	//Open file
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 	if commandLine.Names() != nil {
-		//Open file
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
 		attr, err := record.FLoadAttribute(f)
 		if err != nil {
 			return err
@@ -34,7 +34,7 @@ func untagFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) 
 			return err
 		}
 	} else {
-		if err := record.PurgeFile(path); err != nil {
+		if err := record.PurgeAttr(f); err != nil {
 			return global.FilterSoftError(err)
 		}
 	}
