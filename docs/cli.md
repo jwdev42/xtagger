@@ -9,9 +9,9 @@
     PATH is a path to a file or directory.
     OPTIONS refer to command line options.
 ### command print
-    print [ CONSTRAINT ] [ records ] [ by NAMES ] for PATHS
+    print { [ CONSTRAINT ] [ records ] [ by NAMES ] | untagged } for PATHS
 #### tag-specific nonterminals
-    CONSTRAINT := { valid | invalid | untagged }
+    CONSTRAINT := { valid | invalid }
 ##### valid
 Valid prints the xtagger attribute for files that have at least one valid record.
 ##### invalid
