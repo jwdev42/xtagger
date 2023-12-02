@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/global"
-	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"io/fs"
 	"os"
 	"path/filepath"
 )
 
-func printFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
+func printFile(parent string, info fs.FileInfo) error {
 	print := func(attr record.Attribute, path string) error {
 		if commandLine.FlagPrint0() {
 			_, err := printMe.Print0(path)
@@ -24,7 +23,7 @@ func printFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) 
 		_, err := fmt.Printf("%s\n", path)
 		return err
 	}
-	path := filepath.Join(parent, dirEnt.Name())
+	path := filepath.Join(parent, info.Name())
 	constraint := commandLine.PrintConstraint()
 	//Open file
 	f, err := os.Open(path)

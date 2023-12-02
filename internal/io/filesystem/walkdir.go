@@ -14,27 +14,37 @@ import (
 )
 
 const (
-	SymlinksRejectAll  SymlinkBehaviour = iota //Reject all symlinks
-	SymlinksRejectDirs                         //Do not resolve symlinks to directories, but follow symlinks to files
-	SymlinksRejectNone                         //Follow all symlinks
+	SymlinksRejectAll  SymlinkBehaviour = iota //Reject all symlinks.
+	SymlinksRejectDirs                         //Do not resolve symlinks to directories, but follow symlinks to files.
+	SymlinksRejectNone                         //Follow all symlinks.
+)
+
+const (
+	QuotaDisabled QuotaMode = iota //Disable the quota.
+	QuotaCutoff                    //Enable the quota, will stop the current operation if the threshold is exeeded.
+	QuotaSkip                      //Enable the quota, will skip the current file if the threshold is exeeded.
 )
 
 type ErrorBehaviour int
 type SymlinkBehaviour int
-type FileExaminer func(parent string, dirEnt fs.DirEntry, opts *WalkDirOpts) error
+type QuotaMode int
+type FileExaminer func(parent string, info fs.FileInfo) error
 
-type WalkDirOpts struct {
+type Context struct {
 	SymlinkMode    SymlinkBehaviour
 	DupeDetector   data.DupeDetector
 	DetectorHash   hash.Hash
+	quotaMode      QuotaMode
+	quota          int64 //Quota left in bytes
 	symlinkCounter int
 }
 
-func WalkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
-	return walkDir(path, opts, fileEx)
+func (r *Context) SetQuota(mode QuotaMode, quota int64) {
+	r.quotaMode = mode
+	r.quota = quota
 }
 
-func walkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
+func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 	//Stat directory
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -77,28 +87,23 @@ func walkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
 	}
 	//Loop directory entries
 	for _, dirEnt := range dirEnts {
-		newPath := filepath.Join(path, dirEnt.Name())
 		if dirEnt.IsDir() || dirEnt.Type()&(fs.ModeDir|fs.ModeSymlink) != 0 {
-			//Descend into darkness
-			if err := walkDir(newPath, opts, fileEx); err != nil {
+			//Recurse into subdirectory
+			if err := WalkDir(filepath.Join(path, dirEnt.Name()), opts, fileEx); err != nil {
 				return err
 			}
 		} else {
-			//Use DupeDetector for files if available
-			if opts.DupeDetector != nil {
-				realPath, err := filepath.EvalSymlinks(newPath)
-				if err != nil {
-					return global.FilterSoftError(err)
+			//examine file
+			info, err := dirEnt.Info()
+			if err != nil {
+				if err := global.SoftErrorf("Could not read FileInfo: %s", err); err != nil {
+					return err
 				}
-				if err := opts.DupeDetector.Register(strings.NewReader(realPath), opts.DetectorHash); err != nil {
-					global.DefaultLogger.Debugf("DupeDetector: Skipping already processed file: %s", newPath)
-					continue
-				}
+				continue
 			}
-			//Call file executor function
-			if err := fileEx(path, dirEnt, opts); err != nil {
+			if err := examineFile(path, info, opts, fileEx); err != nil {
 				if errors.Is(err, fs.SkipDir) {
-					global.DefaultLogger.Debugf("File executor returned fs.SkipDir, skipping rest of directory: %s", path)
+					global.DefaultLogger.Debugf("walkDir: File executor returned fs.SkipDir, skipping rest of directory: %s", path)
 					return nil
 				}
 				return err
@@ -106,6 +111,14 @@ func walkDir(path string, opts *WalkDirOpts, fileEx FileExaminer) error {
 		}
 	}
 	return nil
+}
+
+func ExamineFile(parent string, info fs.FileInfo, opts *Context, fileEx FileExaminer) error {
+	err := examineFile(parent, info, opts, fileEx)
+	if errors.Is(err, fs.SkipDir) {
+		return nil
+	}
+	return err
 }
 
 func readDirEnts(path string) ([]fs.DirEntry, []error) {
@@ -129,4 +142,37 @@ func readDirEnts(path string) ([]fs.DirEntry, []error) {
 		}
 	}
 	return dirEnts, errs
+}
+
+func examineFile(parent string, info fs.FileInfo, opts *Context, fileEx FileExaminer) error {
+	path := filepath.Join(parent, info.Name())
+	//Use DupeDetector for files if available
+	if opts.DupeDetector != nil {
+		realPath, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return global.FilterSoftError(err)
+		}
+		if err := opts.DupeDetector.Register(strings.NewReader(realPath), opts.DetectorHash); err != nil {
+			global.DefaultLogger.Debugf("examineFile: DupeDetector detected already processed file, skipping: %s", path)
+			return nil
+		}
+	}
+	//Check quota on regular files
+	if opts.quotaMode != QuotaDisabled && info.Mode().IsRegular() {
+		opts.quota = opts.quota - info.Size()
+		if opts.quota < 0 {
+			switch opts.quotaMode {
+			case QuotaCutoff:
+				global.DefaultLogger.Debugf("examineFile: File exceeds quota in mode QuotaCutoff, aborting: %s", path)
+				return fs.SkipAll
+			case QuotaSkip:
+				global.DefaultLogger.Debugf("examineFile: File exceeds quota in mode QuotaSkip, skipping: %s", path)
+				return nil
+			default:
+				panic(fmt.Errorf("examineFile: Unknown QuotaMode: %d", opts.quotaMode))
+			}
+		}
+	}
+	//Call file executor function
+	return fileEx(parent, info)
 }

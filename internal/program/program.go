@@ -2,6 +2,7 @@ package program
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/global"
@@ -32,15 +33,15 @@ func Run() error {
 	//Execute command-specific branch
 	switch command := commandLine.Command(); command {
 	case cli.CommandTag:
-		return runWithOptionalMP(createWalkDirOpts(true), tagFile)
+		return runWithOptionalMP(createContext(true), tagFile)
 	case cli.CommandPrint:
-		return run(createWalkDirOpts(false), printFile)
+		return run(createContext(false), printFile)
 	case cli.CommandUntag:
-		return run(createWalkDirOpts(true), untagFile)
+		return run(createContext(true), untagFile)
 	case cli.CommandInvalidate:
-		return run(createWalkDirOpts(true), invalidateFile)
+		return run(createContext(true), invalidateFile)
 	case cli.CommandRevalidate:
-		return run(createWalkDirOpts(true), revalidateFile)
+		return run(createContext(true), revalidateFile)
 	default:
 		return fmt.Errorf("Unknown command \"%s\"", command)
 	}
@@ -48,7 +49,7 @@ func Run() error {
 }
 
 // Runs fileFunc multithreaded if the corresponding flag was set.
-func runWithOptionalMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
+func runWithOptionalMP(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
 	if commandLine.FlagMultiThread() {
 		return runMP(opts, fileFunc)
 	}
@@ -56,7 +57,7 @@ func runWithOptionalMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExa
 }
 
 // Main runner for fileFunc, singlethreaded by default, can be wrapped by runMP for multithreading.
-func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
+func run(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
 	for _, path := range commandLine.Paths() {
 		info, err := os.Lstat(path)
 		if err != nil {
@@ -75,9 +76,13 @@ func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
 			}
 			err = filesystem.WalkDir(path, opts, fileFunc)
 		} else {
-			err = fileFunc(filepath.Dir(path), fs.FileInfoToDirEntry(info), opts)
+			err = filesystem.ExamineFile(filepath.Dir(path), info, opts, fileFunc)
 		}
 		if err != nil {
+			if errors.Is(err, fs.SkipAll) {
+				global.DefaultLogger.Debugf("run: %s", err)
+				return nil
+			}
 			return err
 		}
 	}
@@ -85,7 +90,7 @@ func run(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
 }
 
 // Wrapper for run that runs fileFunc in parallel.
-func runMP(opts *filesystem.WalkDirOpts, fileFunc filesystem.FileExaminer) error {
+func runMP(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	errs := make(chan error)
 	waitForErrorCollector := make(chan struct{})

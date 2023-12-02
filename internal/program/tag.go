@@ -5,15 +5,14 @@ import (
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/hashes"
-	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"io/fs"
 	"os"
 	"path/filepath"
 )
 
-func tagFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
-	path := filepath.Join(parent, dirEnt.Name())
+func tagFile(parent string, info fs.FileInfo) error {
+	path := filepath.Join(parent, info.Name())
 	name := commandLine.Names()[0]
 	algo := commandLine.FlagHash()
 	constraint := commandLine.TagConstraint()

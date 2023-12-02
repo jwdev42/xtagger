@@ -21,9 +21,10 @@ type CommandLine struct {
 	flagQuitOnSoftError bool
 	flagMultiThread     bool
 	flagPrint0          bool
-	forbidRecursion     bool
 	printRecords        bool
-	sizeLimit           uint64
+	forbidRecursion     bool
+	quota               int64
+	quotaContinue       bool
 	tagConstraint       TagConstraint
 	untagConstraint     UntagConstraint
 	printConstraint     PrintConstraint
@@ -73,6 +74,14 @@ func (r *CommandLine) ForbidRecursion() bool {
 	return r.forbidRecursion
 }
 
+func (r *CommandLine) SizeQuota() int64 {
+	return r.quota
+}
+
+func (r *CommandLine) FlagQuotaContinue() bool {
+	return r.quotaContinue
+}
+
 func (r *CommandLine) TagConstraint() TagConstraint {
 	return r.tagConstraint
 }
@@ -106,7 +115,7 @@ func (r *CommandLine) parseSizeStatement(input string) error {
 		}
 		base[i] = ch
 	}
-	sizeLimit, err := strconv.ParseUint(string(base), 10, 64)
+	sizeLimit, err := strconv.ParseInt(string(base), 10, 64)
 	if err != nil {
 		return fmt.Errorf("Could not parse size statement: %s", err)
 	}
@@ -117,15 +126,15 @@ func (r *CommandLine) parseSizeStatement(input string) error {
 	const tib = gib * 1024
 	switch suffix {
 	case "":
-		r.sizeLimit = sizeLimit
+		r.quota = sizeLimit
 	case "K":
-		r.sizeLimit = sizeLimit * kib
+		r.quota = sizeLimit * kib
 	case "M":
-		r.sizeLimit = sizeLimit * mib
+		r.quota = sizeLimit * mib
 	case "G":
-		r.sizeLimit = sizeLimit * gib
+		r.quota = sizeLimit * gib
 	case "T":
-		r.sizeLimit = sizeLimit * tib
+		r.quota = sizeLimit * tib
 	default:
 		return fmt.Errorf("Could not parse size statement: Unknown suffix: \"%s\"", suffix)
 	}

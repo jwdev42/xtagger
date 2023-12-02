@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/hashes"
-	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"hash"
 	"io/fs"
@@ -12,16 +11,16 @@ import (
 	"path/filepath"
 )
 
-func invalidateFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
-	return reOrInvalidateFile(false, parent, dirEnt, opts)
+func invalidateFile(parent string, info fs.FileInfo) error {
+	return reOrInvalidateFile(false, parent, info)
 }
 
-func revalidateFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
-	return reOrInvalidateFile(true, parent, dirEnt, opts)
+func revalidateFile(parent string, info fs.FileInfo) error {
+	return reOrInvalidateFile(true, parent, info)
 }
 
-func reOrInvalidateFile(revalidate bool, parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
-	path := filepath.Join(parent, dirEnt.Name())
+func reOrInvalidateFile(revalidate bool, parent string, info fs.FileInfo) error {
+	path := filepath.Join(parent, info.Name())
 	names := commandLine.Names()
 	filteredRecords := func(attr record.Attribute) record.Attribute {
 		if names != nil {

@@ -14,10 +14,16 @@ import (
 var commandLine *cli.CommandLine
 var printMe *printer.Printer
 
-func createWalkDirOpts(detectProcessedFiles bool) *filesystem.WalkDirOpts {
-	var opts = new(filesystem.WalkDirOpts)
+func createContext(detectProcessedFiles bool) *filesystem.Context {
+	var opts = new(filesystem.Context)
 	if commandLine.FlagFollowSymlinks() {
 		opts.SymlinkMode = filesystem.SymlinksRejectNone
+	}
+	if quota := commandLine.SizeQuota(); quota > 0 {
+		if commandLine.FlagQuotaContinue() {
+			opts.SetQuota(filesystem.QuotaSkip, quota)
+		}
+		opts.SetQuota(filesystem.QuotaCutoff, quota)
 	}
 	if detectProcessedFiles {
 		opts.DupeDetector = make(data.DupeDetector)
@@ -27,14 +33,14 @@ func createWalkDirOpts(detectProcessedFiles bool) *filesystem.WalkDirOpts {
 }
 
 func wrapFileExaminer(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, errs chan<- error, payload filesystem.FileExaminer) filesystem.FileExaminer {
-	return func(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
+	return func(parent string, info fs.FileInfo) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := payload(parent, dirEnt, opts); err != nil {
+			if err := payload(parent, info); err != nil {
 				cancel()
 				errs <- err
 			}

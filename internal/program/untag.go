@@ -2,15 +2,14 @@ package program
 
 import (
 	"github.com/jwdev42/xtagger/internal/global"
-	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/record"
 	"io/fs"
 	"os"
 	"path/filepath"
 )
 
-func untagFile(parent string, dirEnt fs.DirEntry, opts *filesystem.WalkDirOpts) error {
-	path := filepath.Join(parent, dirEnt.Name())
+func untagFile(parent string, info fs.FileInfo) error {
+	path := filepath.Join(parent, info.Name())
 	//Open file
 	f, err := os.Open(path)
 	if err != nil {

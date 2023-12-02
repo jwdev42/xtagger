@@ -80,6 +80,16 @@ func (r *parser) parseCommandTag() error {
 	if err := r.parseName(); err != nil {
 		return err
 	}
+	//Parse optional size restriction
+	tok, ok := r.tok()
+	if !ok {
+		return io.EOF
+	}
+	if tok == "up" {
+		if err := r.parseTagSizeLimit(); err != nil {
+			return err
+		}
+	}
 	//Parse "for"
 	if err := r.parseLiteral("for"); err != nil {
 		return err
@@ -158,6 +168,31 @@ func (r *parser) parseTagConstraint() error {
 		r.commandLine.tagConstraint = TagConstraintInvalid
 	default:
 		return r.error("untagged", "invalid")
+	}
+	r.adv()
+	return nil
+}
+
+func (r *parser) parseTagSizeLimit() error {
+	tok, ok := r.tok()
+	if !ok {
+		return io.EOF
+	}
+	//parse "up"
+	if err := r.parseLiteral("up"); err != nil {
+		return err
+	}
+	//parse "to"
+	if err := r.parseLiteral("to"); err != nil {
+		return err
+	}
+	//parse SIZE_SPEC
+	tok, ok = r.tok()
+	if !ok {
+		return io.EOF
+	}
+	if err := r.commandLine.parseSizeStatement(tok); err != nil {
+		return err
 	}
 	r.adv()
 	return nil
