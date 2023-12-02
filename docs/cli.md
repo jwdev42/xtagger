@@ -20,16 +20,16 @@ Invalid prints the xtagger attribute for files that have no valid records. Files
 ##### untagged
 Untagged prints files that have no records.
 ### command tag
-    tag [ CONSTRAINT ] as NAME for PATHS
+    tag [ CONSTRAINT ] as NAME [ up to SIZE_SPEC ] for PATHS
 Command **tag** tags a file or files in a directory.
 #### tag-specific nonterminals
-    CONSTRAINT := { untagged | invalid } [ up to SIZE_SPEC ]
+    CONSTRAINT := { untagged | invalid }
 ##### untagged 
 If *untagged* is activated, only files that have no record yet will be tagged. If there is at least one record, valid or invalid, the file will be skipped.
 ##### invalid
 If *invalid* is set, only files that don't have a valid record will be tagged. If a file already has a valid record, it will be skipped.
-##### up to
-If *up to SIZE_SPEC* is set, xtagger will only tag files as long as their total size sum is smaller than or equal to the limit set by *SIZE_SPEC*.
+#### optional total size limit
+If *up to SIZE_SPEC* is set after *NAME*, xtagger will only tag files as long as their total size sum is smaller than or equal to the limit set by *SIZE_SPEC*.
 ### command untag
     xbackup untag CONSTRAINT for PATHS
 #### tag-specific nonterminals
