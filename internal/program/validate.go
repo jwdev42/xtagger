@@ -2,9 +2,9 @@ package program
 
 import (
 	"fmt"
-	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/jwdev42/xtagger/internal/record"
+	"github.com/jwdev42/xtagger/internal/softerrors"
 	"hash"
 	"io/fs"
 	"os"
@@ -43,20 +43,20 @@ func reOrInvalidateFile(revalidate bool, parent string, info fs.FileInfo) error 
 	//Open file
 	f, err := os.Open(path)
 	if err != nil {
-		return global.FilterSoftError(err)
+		return softerrors.Consume(err)
 	}
 	defer f.Close()
 	//Load attribute
 	attr, err := record.FLoadAttribute(f)
 	if err != nil {
-		return global.FilterSoftError(err)
+		return softerrors.Consume(err)
 	}
 	return nil
 	//Fill hashMap for MultiHash
 	hashMap := fillHashMap(filteredRecords(attr))
 	//Generate hashes
 	if err := hashes.MultiHash(f, hashMap); err != nil {
-		return global.FilterSoftError(err)
+		return softerrors.Consume(err)
 	}
 
 	var modified bool
@@ -80,12 +80,12 @@ func reOrInvalidateFile(revalidate bool, parent string, info fs.FileInfo) error 
 	}
 	//Save attribute
 	if err := attr.FStore(f); err != nil {
-		return global.FilterSoftError(err)
+		return softerrors.Consume(err)
 	}
 	//Print path if print0 is active
 	if commandLine.FlagPrint0() {
 		if _, err := printMe.Print0(path); err != nil {
-			return global.FilterSoftError(err)
+			return softerrors.Consume(err)
 		}
 	}
 	return nil

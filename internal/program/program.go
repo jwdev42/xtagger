@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/cli"
-	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
 	"github.com/jwdev42/xtagger/internal/io/printer"
+	"github.com/jwdev42/xtagger/internal/softerrors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -29,7 +29,7 @@ func Run() error {
 	logger.Default().SetLevel(commandLine.FlagLogLevel())
 	//Set soft error behaviour
 	if commandLine.FlagQuitOnSoftError() {
-		global.StopOnSoftError()
+		softerrors.StopOnSoftError()
 	}
 	//Execute command-specific branch
 	switch command := commandLine.Command(); command {
@@ -62,14 +62,14 @@ func run(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
 	for _, path := range commandLine.Paths() {
 		info, err := os.Lstat(path)
 		if err != nil {
-			if global.FilterSoftError(err) == nil {
+			if softerrors.Consume(err) == nil {
 				continue
 			}
 			return err
 		}
 		if info.IsDir() {
 			if commandLine.ForbidRecursion() {
-				if err := global.SoftErrorf("Recursion is forbidden, cannot descend in directory %s", path); err == nil {
+				if err := softerrors.Errorf("Recursion is forbidden, cannot descend in directory %s", path); err == nil {
 					continue
 				} else {
 					return err

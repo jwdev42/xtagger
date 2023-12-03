@@ -1,8 +1,8 @@
 package program
 
 import (
-	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/record"
+	"github.com/jwdev42/xtagger/internal/softerrors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -34,7 +34,7 @@ func untagFile(parent string, info fs.FileInfo) error {
 		}
 	} else {
 		if err := record.PurgeAttr(f); err != nil {
-			return global.FilterSoftError(err)
+			return softerrors.Consume(err)
 		}
 	}
 	if commandLine.FlagPrint0() {

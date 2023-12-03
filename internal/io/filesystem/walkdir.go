@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/data"
-	"github.com/jwdev42/xtagger/internal/global"
+	"github.com/jwdev42/xtagger/internal/softerrors"
 	"hash"
 	"io"
 	"io/fs"
@@ -49,7 +49,7 @@ func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 	//Stat directory
 	info, err := os.Lstat(path)
 	if err != nil {
-		return global.FilterSoftError(err)
+		return softerrors.Consume(err)
 	}
 	//Check if path is a directory
 	if !(info.IsDir() || info.Mode()&(fs.ModeDir|fs.ModeSymlink) != 0) {
@@ -81,7 +81,7 @@ func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 				logger.Default().Error(err)
 				continue
 			}
-			if global.FilterSoftError(err) != nil {
+			if softerrors.Consume(err) != nil {
 				return err
 			}
 		}
@@ -97,7 +97,7 @@ func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 			//examine file
 			info, err := dirEnt.Info()
 			if err != nil {
-				if err := global.SoftErrorf("Could not read FileInfo: %s", err); err != nil {
+				if err := softerrors.Errorf("Could not read FileInfo: %s", err); err != nil {
 					return err
 				}
 				continue
@@ -151,7 +151,7 @@ func examineFile(parent string, info fs.FileInfo, opts *Context, fileEx FileExam
 	if opts.DupeDetector != nil {
 		realPath, err := filepath.EvalSymlinks(path)
 		if err != nil {
-			return global.FilterSoftError(err)
+			return softerrors.Consume(err)
 		}
 		if err := opts.DupeDetector.Register(strings.NewReader(realPath), opts.DetectorHash); err != nil {
 			logger.Default().Debugf("examineFile: DupeDetector detected already processed file, skipping: %s", path)

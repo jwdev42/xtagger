@@ -3,8 +3,8 @@ package program
 import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/cli"
-	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/record"
+	"github.com/jwdev42/xtagger/internal/softerrors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -28,13 +28,13 @@ func printFile(parent string, info fs.FileInfo) error {
 	//Open file
 	f, err := os.Open(path)
 	if err != nil {
-		return global.FilterSoftError(err)
+		return softerrors.Consume(err)
 	}
 	defer f.Close()
 	//Load Attributes
 	attr, err := record.FLoadAttribute(f)
 	if err != nil {
-		return global.FilterSoftError(err)
+		return softerrors.Consume(err)
 	}
 	//Filter Attributes by name
 	if names := commandLine.Names(); names != nil {
@@ -45,7 +45,7 @@ func printFile(parent string, info fs.FileInfo) error {
 		switch constraint {
 		case cli.PrintConstraintUntagged:
 			//Print recordless file if PrintConstraintUntagged is set
-			return global.FilterSoftError(print(attr, path))
+			return softerrors.Consume(print(attr, path))
 		}
 		//Skip file otherwise
 		return nil
@@ -53,7 +53,7 @@ func printFile(parent string, info fs.FileInfo) error {
 
 	switch constraint {
 	case cli.PrintConstraintNone:
-		return global.FilterSoftError(print(attr, path)) //Print tagged file if no constraint is set
+		return softerrors.Consume(print(attr, path)) //Print tagged file if no constraint is set
 	case cli.PrintConstraintUntagged:
 		return nil //Skip tagged file
 	}
@@ -73,12 +73,12 @@ func printFile(parent string, info fs.FileInfo) error {
 	case cli.PrintConstraintInvalid:
 		//Print if all records are invalid
 		if !hasValidEntry {
-			return global.FilterSoftError(print(attr, path))
+			return softerrors.Consume(print(attr, path))
 		}
 	case cli.PrintConstraintValid:
 		//Print if all records are valid
 		if !hasInvalidEntry {
-			return global.FilterSoftError(print(attr, path))
+			return softerrors.Consume(print(attr, path))
 		}
 	default:
 		panic("You're not supposed to be here")
