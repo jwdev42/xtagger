@@ -69,6 +69,9 @@ func (r *parser) parseCommand() error {
 	case CommandInvalidate, CommandRevalidate:
 		r.adv()
 		err = r.parseCommandInvalidateOrRevalidate()
+	case CommandLicenses:
+		r.adv()
+		err = r.parseCommandLicense()
 	default:
 		err = fmt.Errorf("Unknown command: %q", command)
 	}
@@ -168,6 +171,15 @@ func (r *parser) parseCommandInvalidateOrRevalidate() error {
 	}
 	//parse PATHS
 	return r.parsePathsUntilEOF()
+}
+
+func (r *parser) parseCommandLicense() error {
+	//catch "EOF" token
+	_, ok := r.tok()
+	if !ok {
+		return nil
+	}
+	return r.error(io.EOF.Error())
 }
 
 func (r *parser) parseTagConstraint() error {

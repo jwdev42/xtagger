@@ -57,6 +57,8 @@ func Run() error {
 		return run(createContext(true), invalidateFile)
 	case cli.CommandRevalidate:
 		return run(createContext(true), revalidateFile)
+	case cli.CommandLicenses:
+		printLicenses()
 	default:
 		return fmt.Errorf("Unknown command \"%s\"", command)
 	}

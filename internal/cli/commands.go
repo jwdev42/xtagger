@@ -21,6 +21,7 @@ const (
 	CommandUntag              = "untag"
 	CommandInvalidate         = "invalidate"
 	CommandRevalidate         = "revalidate"
+	CommandLicenses           = "licenses"
 )
 
 type Command string
