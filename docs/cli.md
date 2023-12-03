@@ -46,3 +46,6 @@ Command **invalidate** marks records as invalid if the stored hash does not matc
 ### command revalidate
     revalidate { all | NAMES } for PATHS
 Command **revalidate** marks invalid records as valid again if the stored hash matches the file hash.
+### command licenses
+    xbackup licenses
+Command **licenses** prints license information and exits.
