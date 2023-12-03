@@ -1,6 +1,0 @@
-loop:
-	read block from source
-	send block to the hasher
-	write block to target
-set target file times to source file times
-write sum to xattrs of source and target
