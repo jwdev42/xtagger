@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/io/filesystem"
@@ -25,7 +26,7 @@ func Run() error {
 	//Setup printer
 	printMe = printer.NewPrinter(os.Stdout)
 	//Update Logger
-	global.DefaultLogger.SetLevel(commandLine.FlagLogLevel())
+	logger.Default().SetLevel(commandLine.FlagLogLevel())
 	//Set soft error behaviour
 	if commandLine.FlagQuitOnSoftError() {
 		global.StopOnSoftError()
@@ -80,7 +81,7 @@ func run(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
 		}
 		if err != nil {
 			if errors.Is(err, fs.SkipAll) {
-				global.DefaultLogger.Debugf("run: %s", err)
+				logger.Default().Debugf("run: %s", err)
 				return nil
 			}
 			return err
@@ -101,9 +102,9 @@ func runMP(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
 	go func() {
 		defer close(waitForErrorCollector)
 		for err := <-errs; err != nil; err = <-errs {
-			global.DefaultLogger.Error(err)
+			logger.Default().Error(err)
 		}
-		global.DefaultLogger.Debug("runMP: Error callback goroutine exits...")
+		logger.Default().Debug("runMP: Error callback goroutine exits...")
 	}()
 	return run(opts, wrapFileExaminer(ctx, cancel, waitForExaminers, errs, fileFunc))
 }

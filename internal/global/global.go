@@ -15,7 +15,6 @@ const BufSize = 1048576 //Default buffer size is 1 MiB
 
 type ProgramExitCode int
 
-var DefaultLogger *logger.Logger //The program's default logger
 var ExitCode ProgramExitCode = ExitSuccess
 var stopOnSoftError bool
 
@@ -29,7 +28,7 @@ func FilterSoftError(err error) error {
 	}
 	//Consume soft error
 	if err != nil {
-		DefaultLogger.Error(err)
+		logger.Default().Error(err)
 		ExitCode = ExitSoftError
 	}
 	return nil
@@ -38,7 +37,7 @@ func FilterSoftError(err error) error {
 func SoftErrorf(format string, a ...any) error {
 	if !stopOnSoftError {
 		//Consume soft error
-		DefaultLogger.Errorf(format, a...)
+		logger.Default().Errorf(format, a...)
 		ExitCode = ExitSoftError
 		return nil
 	}

@@ -3,6 +3,7 @@ package filesystem
 import (
 	"errors"
 	"fmt"
+	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/data"
 	"github.com/jwdev42/xtagger/internal/global"
 	"hash"
@@ -58,7 +59,7 @@ func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 	if info.Mode()&fs.ModeSymlink != 0 {
 		//Check if symlinks are to follow
 		if opts.SymlinkMode != SymlinksRejectNone {
-			global.DefaultLogger.Infof("Skipping directory symlink: %s", path)
+			logger.Default().Infof("Skipping directory symlink: %s", path)
 			return nil
 		}
 		//Symlink counter
@@ -68,16 +69,16 @@ func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 		opts.symlinkCounter++
 		defer func() {
 			opts.symlinkCounter--
-			global.DefaultLogger.Debugf("Symlink counter: %02d", opts.symlinkCounter)
+			logger.Default().Debugf("Symlink counter: %02d", opts.symlinkCounter)
 		}()
-		global.DefaultLogger.Debugf("Symlink counter: %02d", opts.symlinkCounter)
+		logger.Default().Debugf("Symlink counter: %02d", opts.symlinkCounter)
 	}
 	//Read directory entries
 	dirEnts, errs := readDirEnts(path)
 	if len(errs) > 0 {
 		for i, err := range errs {
 			if len(errs)-i > 1 {
-				global.DefaultLogger.Error(err)
+				logger.Default().Error(err)
 				continue
 			}
 			if global.FilterSoftError(err) != nil {
@@ -103,7 +104,7 @@ func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 			}
 			if err := examineFile(path, info, opts, fileEx); err != nil {
 				if errors.Is(err, fs.SkipDir) {
-					global.DefaultLogger.Debugf("walkDir: File executor returned fs.SkipDir, skipping rest of directory: %s", path)
+					logger.Default().Debugf("walkDir: File executor returned fs.SkipDir, skipping rest of directory: %s", path)
 					return nil
 				}
 				return err
@@ -153,7 +154,7 @@ func examineFile(parent string, info fs.FileInfo, opts *Context, fileEx FileExam
 			return global.FilterSoftError(err)
 		}
 		if err := opts.DupeDetector.Register(strings.NewReader(realPath), opts.DetectorHash); err != nil {
-			global.DefaultLogger.Debugf("examineFile: DupeDetector detected already processed file, skipping: %s", path)
+			logger.Default().Debugf("examineFile: DupeDetector detected already processed file, skipping: %s", path)
 			return nil
 		}
 	}
@@ -163,10 +164,10 @@ func examineFile(parent string, info fs.FileInfo, opts *Context, fileEx FileExam
 		if opts.quota < 0 {
 			switch opts.quotaMode {
 			case QuotaCutoff:
-				global.DefaultLogger.Debugf("examineFile: File exceeds quota in mode QuotaCutoff, aborting: %s", path)
+				logger.Default().Debugf("examineFile: File exceeds quota in mode QuotaCutoff, aborting: %s", path)
 				return fs.SkipAll
 			case QuotaSkip:
-				global.DefaultLogger.Debugf("examineFile: File exceeds quota in mode QuotaSkip, skipping: %s", path)
+				logger.Default().Debugf("examineFile: File exceeds quota in mode QuotaSkip, skipping: %s", path)
 				return nil
 			default:
 				panic(fmt.Errorf("examineFile: Unknown QuotaMode: %d", opts.quotaMode))

@@ -9,10 +9,10 @@ import (
 
 func main() {
 	//Setup logger
-	global.DefaultLogger = logger.New(os.Stderr, logger.LevelError, " - ")
+	logger.SetupDefaultLogger(os.Stderr, logger.LevelError, " - ")
 	//Run program
 	if err := program.Run(); err != nil {
-		global.DefaultLogger.Panicf("%s", err)
+		logger.Default().Panicf("%s", err)
 		global.ExitCode = global.ExitHardError
 	}
 	os.Exit(int(global.ExitCode))

@@ -2,6 +2,7 @@ package program
 
 import (
 	"fmt"
+	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/hashes"
@@ -45,12 +46,12 @@ func tagFile(parent string, info fs.FileInfo) error {
 		return global.FilterSoftError(fmt.Errorf("Record \"%s\" already exists for path \"%s\"", name, path))
 	}
 	//Hash file
-	global.DefaultLogger.Infof("Hashing file %s", path)
+	logger.Default().Infof("Hashing file %s", path)
 	hash := algo.New()
 	if err := hashes.Hash(f, hash); err != nil {
 		return global.FilterSoftError(err)
 	}
-	global.DefaultLogger.Infof("Successfully hashed file %s", path)
+	logger.Default().Infof("Successfully hashed file %s", path)
 	//Create record
 	rec := record.NewRecord()
 	rec.Checksum = fmt.Sprintf("%x", hash.Sum(nil))
