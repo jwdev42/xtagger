@@ -19,8 +19,8 @@ import (
 	"crypto/sha256"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/data"
-	"github.com/jwdev42/xtagger/internal/io/filesystem"
-	"github.com/jwdev42/xtagger/internal/io/printer"
+	"github.com/jwdev42/xtagger/internal/xio/filesystem"
+	"github.com/jwdev42/xtagger/internal/xio/printer"
 	"io/fs"
 	"sync"
 )
