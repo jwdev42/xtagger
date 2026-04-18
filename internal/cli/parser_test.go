@@ -153,7 +153,7 @@ func TestParser(t *testing.T) {
 			tokens:      *tokens,
 			commandLine: new(CommandLine),
 		}
-		if err := p.parseCommand(); err != nil {
+		if err := p.start(); err != nil {
 			t.Errorf("Parser error for command \"%s\": %s", strings.Join(*tokens, " "), err)
 			continue
 		}

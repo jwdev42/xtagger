@@ -178,7 +178,7 @@ func ParseCommandLine() (*CommandLine, error) {
 		tokens:      main.Args(),
 		commandLine: cmd,
 	}
-	if err := p.parseCommand(); err != nil {
+	if err := p.start(); err != nil {
 		return nil, err
 	}
 	return cmd, nil

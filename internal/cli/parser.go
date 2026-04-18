@@ -29,6 +29,16 @@ type parser struct {
 	commandLine *CommandLine
 }
 
+// Parser entry point, use this for parsing a command line
+func (r *parser) start() error {
+	command, err := r.parseCommand()
+	if err != nil {
+		return r.error("COMMAND")
+	}
+	r.commandLine.command = command
+	return nil
+}
+
 // Advances to the next token.
 func (r *parser) adv() {
 	r.pos++
@@ -45,14 +55,14 @@ func (r *parser) tok() (string, bool) {
 
 func (r *parser) error(expected ...string) error {
 	tok, _ := r.tok()
-	return fmt.Errorf("[Token at index %03d] Expected \"%s\", got \"%s\"", r.pos, strings.Join(expected, "\" or \""), tok)
+	return fmt.Errorf("[Token at index %03d] Expected %q, got %q", r.pos, strings.Join(expected, "\" or \""), tok)
 }
 
-// Parser entry point, parses a command.
-func (r *parser) parseCommand() error {
+// Parse a command.
+func (r *parser) parseCommand() (Command, error) {
 	tok, ok := r.tok()
 	if !ok {
-		return io.EOF
+		return CommandInvalid, io.EOF
 	}
 	command := Command(tok)
 	var err error
@@ -76,10 +86,9 @@ func (r *parser) parseCommand() error {
 		err = fmt.Errorf("Unknown command: %q", command)
 	}
 	if err != nil {
-		return err
+		return CommandInvalid, err
 	}
-	r.commandLine.command = command
-	return nil
+	return command, nil
 }
 
 func (r *parser) parseCommandTag() error {
