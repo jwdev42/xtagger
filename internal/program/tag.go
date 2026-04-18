@@ -16,12 +16,12 @@ package program
 
 import (
 	"fmt"
-	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/softerrors"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -60,13 +60,13 @@ func tagFile(parent string, info fs.FileInfo) error {
 		return softerrors.Consume(fmt.Errorf("Record \"%s\" already exists for path \"%s\"", name, path))
 	}
 	//Hash file
-	logger.Default().Infof("Hashing file %s", path)
+	slog.Debug("Hashing file", "path", path)
 	hash := algo.New()
 	if err := hashes.Hash(f, hash); err != nil {
 		return softerrors.Consume(err)
 	}
-	logger.Default().Infof("Successfully hashed file %s", path)
 	//Create record
+	slog.Debug("Create new tag record", "path", path)
 	rec := record.NewRecord()
 	rec.Checksum = fmt.Sprintf("%x", hash.Sum(nil))
 	rec.HashAlgo = algo
@@ -77,6 +77,8 @@ func tagFile(parent string, info fs.FileInfo) error {
 	if err := attr.FStore(f); err != nil {
 		return softerrors.Consume(err)
 	}
+	// Send info log
+	slog.Info("Tagged file", "path", path, "checksum", rec.Checksum, "algorithm", rec.HashAlgo)
 	//Print path if print0 is active
 	if commandLine.FlagPrint0() {
 		if _, err := printMe.Print0(path); err != nil {

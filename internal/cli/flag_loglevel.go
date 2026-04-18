@@ -12,22 +12,31 @@
 //You should have received a copy of the GNU General Public License
 //along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package main
+package cli
 
 import (
-	"context"
-	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/logging"
-	"github.com/jwdev42/xtagger/internal/program"
 	"log/slog"
-	"os"
 )
 
-func main() {
-	//Run program
-	if err := program.Run(); err != nil {
-		slog.Log(context.Background(), logging.LevelFatal, err.Error())
-		global.ExitCode = global.ExitHardError
+// Type for parsing a log level string
+type flagLogLevel struct {
+	logLevel slog.Level
+}
+
+func (r *flagLogLevel) Get() any {
+	return r.logLevel
+}
+
+func (r *flagLogLevel) String() string {
+	if r == nil {
+		return ""
 	}
-	os.Exit(int(global.ExitCode))
+	return logging.LogLevelName(r.logLevel)
+}
+
+func (r *flagLogLevel) Set(name string) error {
+	level, err := logging.ParseLogLevelName(name)
+	r.logLevel = level
+	return err
 }

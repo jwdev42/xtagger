@@ -18,8 +18,8 @@ package softerrors
 
 import (
 	"fmt"
-	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/global"
+	"log/slog"
 )
 
 var stopOnSoftError bool
@@ -37,7 +37,7 @@ func Consume(err error) error {
 	}
 	//Consume soft error
 	if err != nil {
-		logger.Default().Error(err)
+		slog.Error(err.Error())
 		global.ExitCode = global.ExitSoftError
 	}
 	return nil
@@ -48,7 +48,7 @@ func Consume(err error) error {
 func Errorf(format string, a ...any) error {
 	if !stopOnSoftError {
 		//Consume soft error
-		logger.Default().Errorf(format, a...)
+		slog.Error(fmt.Sprintf(format, a...))
 		global.ExitCode = global.ExitSoftError
 		return nil
 	}

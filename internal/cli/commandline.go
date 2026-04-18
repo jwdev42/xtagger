@@ -17,8 +17,8 @@ package cli
 import (
 	"flag"
 	"fmt"
-	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/hashes"
+	"log/slog"
 	"os"
 	"slices"
 	"strconv"
@@ -29,7 +29,7 @@ type CommandLine struct {
 	command             Command //Specified command
 	paths               []string
 	names               []string
-	flagLogLevel        logger.Level //parsed loglevel
+	flagLogLevel        slog.Level //parsed loglevel
 	flagFollowSymlinks  bool
 	flagHash            hashes.Algo
 	flagQuitOnSoftError bool
@@ -60,7 +60,7 @@ func (r *CommandLine) FlagFollowSymlinks() bool {
 	return r.flagFollowSymlinks
 }
 
-func (r *CommandLine) FlagLogLevel() logger.Level {
+func (r *CommandLine) FlagLogLevel() slog.Level {
 	return r.flagLogLevel
 }
 
@@ -160,9 +160,9 @@ func ParseCommandLine() (*CommandLine, error) {
 	//Stage 1: Parse flags
 	var cmd = new(CommandLine)
 	cmd.flagHash = hashes.SHA256 //Default hash algorithm
-	var logLevel = logger.LevelFlag(logger.LevelError)
+	var logLevel = &flagLogLevel{}
 	main := flag.NewFlagSet("main", flag.ContinueOnError)
-	main.Var(&logLevel, "ll", "Set the loglevel")
+	main.Var(logLevel, "ll", "Set the loglevel")
 	main.BoolVar(&cmd.flagFollowSymlinks, "symlinks", false, "Program follows symlinks if true")
 	main.Func("hash", "Specify the hashing algorithm", cmd.parseHashAlgo)
 	main.Func("limit", "Specify the size limit", cmd.parseSizeStatement)
@@ -172,7 +172,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	if err := main.Parse(os.Args[1:]); err != nil {
 		return nil, err
 	}
-	cmd.flagLogLevel = logger.Level(logLevel)
+	cmd.flagLogLevel = logLevel.Get().(slog.Level)
 	//Stage 2: Parse command
 	p := &parser{
 		tokens:      main.Args(),

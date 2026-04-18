@@ -15,14 +15,16 @@
 package filesystem
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/data"
+	"github.com/jwdev42/xtagger/internal/logging"
 	"github.com/jwdev42/xtagger/internal/softerrors"
 	"hash"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,7 +75,7 @@ func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 	if info.Mode()&fs.ModeSymlink != 0 {
 		//Check if symlinks are to follow
 		if opts.SymlinkMode != SymlinksRejectNone {
-			logger.Default().Infof("Skipping directory symlink: %s", path)
+			slog.Info("Skipping directory symlink", "path", path)
 			return nil
 		}
 		//Symlink counter
@@ -83,16 +85,16 @@ func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 		opts.symlinkCounter++
 		defer func() {
 			opts.symlinkCounter--
-			logger.Default().Debugf("Symlink counter: %02d", opts.symlinkCounter)
+			slog.Log(context.Background(), logging.LevelTrace, "Count symlink depth", "depth", opts.symlinkCounter)
 		}()
-		logger.Default().Debugf("Symlink counter: %02d", opts.symlinkCounter)
+		slog.Log(context.Background(), logging.LevelTrace, "Count symlink depth", "depth", opts.symlinkCounter)
 	}
 	//Read directory entries
 	dirEnts, errs := readDirEnts(path)
 	if len(errs) > 0 {
 		for i, err := range errs {
 			if len(errs)-i > 1 {
-				logger.Default().Error(err)
+				slog.Error(err.Error())
 				continue
 			}
 			if softerrors.Consume(err) != nil {
@@ -118,7 +120,7 @@ func WalkDir(path string, opts *Context, fileEx FileExaminer) error {
 			}
 			if err := examineFile(path, info, opts, fileEx); err != nil {
 				if errors.Is(err, fs.SkipDir) {
-					logger.Default().Debugf("walkDir: File executor returned fs.SkipDir, skipping rest of directory: %s", path)
+					slog.Debug("walkDir: File executor returned fs.SkipDir, skipping rest of directory", "path", path)
 					return nil
 				}
 				return err
@@ -168,7 +170,7 @@ func examineFile(parent string, info fs.FileInfo, opts *Context, fileEx FileExam
 			return softerrors.Consume(err)
 		}
 		if err := opts.DupeDetector.Register(strings.NewReader(realPath), opts.DetectorHash); err != nil {
-			logger.Default().Debugf("examineFile: DupeDetector detected already processed file, skipping: %s", path)
+			slog.Debug("examineFile: DupeDetector detected already processed file", "path", path)
 			return nil
 		}
 	}
@@ -178,10 +180,10 @@ func examineFile(parent string, info fs.FileInfo, opts *Context, fileEx FileExam
 		if opts.quota < 0 {
 			switch opts.quotaMode {
 			case QuotaCutoff:
-				logger.Default().Debugf("examineFile: File exceeds quota in mode QuotaCutoff, aborting: %s", path)
+				slog.Debug("examineFile: File exceeds quota in mode QuotaCutoff, aborting...", "path", path)
 				return fs.SkipAll
 			case QuotaSkip:
-				logger.Default().Debugf("examineFile: File exceeds quota in mode QuotaSkip, skipping: %s", path)
+				slog.Debug("examineFile: File exceeds quota in mode QuotaSkip, skipping...", "path", path)
 				return nil
 			default:
 				panic(fmt.Errorf("examineFile: Unknown QuotaMode: %d", opts.quotaMode))

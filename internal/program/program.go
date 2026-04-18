@@ -18,12 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jwdev42/logger"
 	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/logging"
 	"github.com/jwdev42/xtagger/internal/softerrors"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"github.com/jwdev42/xtagger/internal/xio/printer"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -32,15 +33,17 @@ import (
 // Program entry point called by main().
 func Run() error {
 	var err error
+	//Setup logger
+	dynamicLogLevel := setupDefaultLogger()
 	//Parse command line
 	commandLine, err = cli.ParseCommandLine()
 	if err != nil {
 		return fmt.Errorf("Command line error: %s", err)
 	}
+	// Adjust log level
+	dynamicLogLevel.Set(commandLine.FlagLogLevel())
 	//Setup printer
 	printMe = printer.NewPrinter(os.Stdout)
-	//Update Logger
-	logger.Default().SetLevel(commandLine.FlagLogLevel())
 	//Set soft error behaviour
 	if commandLine.FlagQuitOnSoftError() {
 		softerrors.StopOnSoftError()
@@ -63,6 +66,18 @@ func Run() error {
 		return fmt.Errorf("Unknown command \"%s\"", command)
 	}
 	return nil
+}
+
+// Setup default logger with dynamic leveler, return LevelVar
+func setupDefaultLogger() *slog.LevelVar {
+	levelSwitch := &slog.LevelVar{} // log level LevelInfo
+	defaultLogger := slog.New(slog.NewTextHandler(os.Stderr,
+		&slog.HandlerOptions{
+			Level:       levelSwitch,
+			ReplaceAttr: logging.ReplaceLogLevelNames,
+		}))
+	slog.SetDefault(defaultLogger)
+	return levelSwitch
 }
 
 // Runs fileFunc multithreaded if the corresponding flag was set.
@@ -97,7 +112,7 @@ func run(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
 		}
 		if err != nil {
 			if errors.Is(err, fs.SkipAll) {
-				logger.Default().Debugf("run: %s", err)
+				slog.Debug(err.Error())
 				return nil
 			}
 			return err
@@ -118,9 +133,9 @@ func runMP(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
 	go func() {
 		defer close(waitForErrorCollector)
 		for err := <-errs; err != nil; err = <-errs {
-			logger.Default().Error(err)
+			slog.Error(err.Error())
 		}
-		logger.Default().Debug("runMP: Error callback goroutine exits...")
+		slog.Debug("runMP: Error callback goroutine exits...")
 	}()
 	return run(opts, wrapFileExaminer(ctx, cancel, waitForExaminers, errs, fileFunc))
 }

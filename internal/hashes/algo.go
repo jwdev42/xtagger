@@ -43,7 +43,7 @@ func ParseAlgo(Name string) (Algo, error) {
 	case "SHA3256", "sha3256", "SHA3_256", "sha3_256":
 		return SHA3256, nil
 	}
-	return "", fmt.Errorf("Unknown hashing algorithm \"%s\"", Name)
+	return "", fmt.Errorf("Unknown hashing algorithm %q", Name)
 }
 
 // Returns a usable hash.Hash interface. If the receiver is not a valid name for
@@ -57,7 +57,7 @@ func (r Algo) New() hash.Hash {
 	case SHA3256:
 		return sha3.New256()
 	}
-	panic(fmt.Errorf("Receiver has an invalid value: \"%s\"", r))
+	panic(fmt.Errorf("Receiver has an invalid value: %q", r))
 }
 
 func (r *Algo) UnmarshalText(text []byte) error {
@@ -77,5 +77,9 @@ func (r Algo) Validate() error {
 	case SHA256, RIPEMD160, SHA3256:
 		return nil
 	}
-	return fmt.Errorf("Invalid hashing algorithm \"%s\"", r)
+	return fmt.Errorf("Unsupported hashing algorithm %q", r)
+}
+
+func (r Algo) String() string {
+	return string(r)
 }
