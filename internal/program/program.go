@@ -80,13 +80,24 @@ func setupDefaultLogger() *slog.LevelVar {
 	return levelSwitch
 }
 
+func payloadRunner(
+		ctx context.Context,
+		errs chan<- error,
+		metas <-chan *Meta,
+		opts filesystem.PushOpts,
+		payload func(*Meta)error) {
+	payloadWrapper := func() {
+		
+	}
+}
+
 // Runs fileFunc multithreaded if the corresponding flag was set.
 func runWithOptionalMP(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
 	if commandLine.FlagMultiThread() {
 		return runMP(opts, fileFunc)
 	}
 	return run(opts, fileFunc)
-}
+} 
 
 // Main runner for fileFunc, singlethreaded by default, can be wrapped by runMP for multithreading.
 func run(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
