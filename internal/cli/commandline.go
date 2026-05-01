@@ -33,12 +33,12 @@ type CommandLine struct {
 	flagFollowSymlinks  bool
 	flagHash            hashes.Algo
 	flagQuitOnSoftError bool
-	flagMultiThread     bool
 	flagPrint0          bool
 	printRecords        bool
 	forbidRecursion     bool
 	quota               int64
 	quotaContinue       bool
+	threads             int
 	tagConstraint       TagConstraint
 	untagConstraint     UntagConstraint
 	printConstraint     PrintConstraint
@@ -72,10 +72,6 @@ func (r *CommandLine) FlagQuitOnSoftError() bool {
 	return r.flagQuitOnSoftError
 }
 
-func (r *CommandLine) FlagMultiThread() bool {
-	return r.flagMultiThread
-}
-
 func (r *CommandLine) FlagPrint0() bool {
 	return r.flagPrint0
 }
@@ -94,6 +90,13 @@ func (r *CommandLine) SizeQuota() int64 {
 
 func (r *CommandLine) FlagQuotaContinue() bool {
 	return r.quotaContinue
+}
+
+func (r *CommandLine) Threads() int {
+	if r.threads < 1 {
+		return 1
+	}
+	return r.threads
 }
 
 func (r *CommandLine) TagConstraint() TagConstraint {
@@ -167,7 +170,7 @@ func ParseCommandLine() (*CommandLine, error) {
 	main.Func("hash", "Specify the hashing algorithm", cmd.parseHashAlgo)
 	main.Func("limit", "Specify the size limit", cmd.parseSizeStatement)
 	main.BoolVar(&cmd.flagQuitOnSoftError, "hard", false, "Quit on every error if true")
-	main.BoolVar(&cmd.flagMultiThread, "mt", false, "Enable multithreading on supported subroutines")
+	main.IntVar(&cmd.threads, "threads", 4, "Number of threads, set this to 1 on HDDs")
 	main.BoolVar(&cmd.flagPrint0, "print0", false, "Print processed file paths null-terminated")
 	if err := main.Parse(os.Args[1:]); err != nil {
 		return nil, err
@@ -210,9 +213,6 @@ func (a *CommandLine) mustEqual(b *CommandLine) error {
 	}
 	if a.flagQuitOnSoftError != b.flagQuitOnSoftError {
 		return differs("flagQuitOnSoftError", a.flagQuitOnSoftError, b.flagQuitOnSoftError)
-	}
-	if a.flagMultiThread != b.flagMultiThread {
-		return differs("flagMultiThread", a.flagMultiThread, b.flagMultiThread)
 	}
 	if a.flagPrint0 != b.flagPrint0 {
 		return differs("flagPrint0", a.flagPrint0, b.flagPrint0)

@@ -19,12 +19,11 @@ import (
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/softerrors"
-	"io/fs"
+	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"os"
-	"path/filepath"
 )
 
-func printFile(parent string, info fs.FileInfo) error {
+func printFile(meta *filesystem.Meta) error {
 	print := func(attr record.Attribute, path string) error {
 		if commandLine.FlagPrint0() {
 			_, err := printMe.Print0(path)
@@ -37,10 +36,9 @@ func printFile(parent string, info fs.FileInfo) error {
 		_, err := fmt.Printf("%s\n", path)
 		return err
 	}
-	path := filepath.Join(parent, info.Name())
 	constraint := commandLine.PrintConstraint()
 	//Open file
-	f, err := os.Open(path)
+	f, err := os.Open(meta.Path())
 	if err != nil {
 		return softerrors.Consume(err)
 	}
@@ -59,7 +57,7 @@ func printFile(parent string, info fs.FileInfo) error {
 		switch constraint {
 		case cli.PrintConstraintUntagged:
 			//Print recordless file if PrintConstraintUntagged is set
-			return softerrors.Consume(print(attr, path))
+			return softerrors.Consume(print(attr, meta.Path()))
 		}
 		//Skip file otherwise
 		return nil
@@ -67,7 +65,7 @@ func printFile(parent string, info fs.FileInfo) error {
 
 	switch constraint {
 	case cli.PrintConstraintNone:
-		return softerrors.Consume(print(attr, path)) //Print tagged file if no constraint is set
+		return softerrors.Consume(print(attr, meta.Path())) //Print tagged file if no constraint is set
 	case cli.PrintConstraintUntagged:
 		return nil //Skip tagged file
 	}
@@ -87,12 +85,12 @@ func printFile(parent string, info fs.FileInfo) error {
 	case cli.PrintConstraintInvalid:
 		//Print if all records are invalid
 		if !hasValidEntry {
-			return softerrors.Consume(print(attr, path))
+			return softerrors.Consume(print(attr, meta.Path()))
 		}
 	case cli.PrintConstraintValid:
 		//Print if all records are valid
 		if !hasInvalidEntry {
-			return softerrors.Consume(print(attr, path))
+			return softerrors.Consume(print(attr, meta.Path()))
 		}
 	default:
 		panic("You're not supposed to be here")

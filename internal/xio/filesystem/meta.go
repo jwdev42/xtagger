@@ -16,15 +16,17 @@ package filesystem
 
 import (
 	"context"
+	"github.com/jwdev42/xtagger/internal/logging"
 	"io/fs"
-	"path/filepath"
 	"os"
+	"path/filepath"
+	"sync"
 )
 
 // Options for PushMetas
 type PushOpts struct {
 	FollowSymlinks bool //Follow symbolic links if true
-	Recursive bool //Only read contents of root directory, skip subdirectories.
+	Recursive      bool //Only read contents of root directory, skip subdirectories.
 }
 
 type Meta struct {
@@ -49,7 +51,7 @@ func (r *Meta) IsRegular() bool {
 
 // Return true if symbolic link
 func (r *Meta) IsLink() bool {
-	if r.Mode() & fs.ModeSymlink == fs.ModeSymlink {
+	if r.Mode()&fs.ModeSymlink == fs.ModeSymlink {
 		return true
 	}
 	return false
@@ -59,7 +61,7 @@ func (r *Meta) IsLink() bool {
 func NewMeta(dir string, info fs.FileInfo) *Meta {
 	return &Meta{
 		FileInfo: info,
-		dir: dir,
+		dir:      dir,
 	}
 }
 
@@ -71,7 +73,7 @@ func Lstat(path string) (*Meta, error) {
 	return NewMeta(filepath.Dir(path), info), nil
 }
 
-// PushMetas is a producer, it starts a goroutine that stats files and 
+// PushMetas is a producer, it starts a goroutine that stats files and
 // pushes the corresponding *Meta objects to the returned channel.
 // Channel errs exists for returning errors to the error consumer.
 // Variable start is the entry path for the stat operation.
@@ -79,28 +81,26 @@ func Lstat(path string) (*Meta, error) {
 // symlink behaviour.
 // IMPORTANT: The caller (consumer) is responsible for draining the
 // returned channel to prevent a goroutine leak.
-func PushMetas(ctx context.Context, errs chan<- error, opts PushOpts, root string) <-chan *Meta {
-	push := make(chan *Meta)
-	go pushMetasAndClose(ctx, opts, root, push, errs)
-	return push
-}
-
-// Wraps call to pushMetas to ensure channel closure only once as
-// pushMetas can be called recursively.
-func pushMetasAndClose(ctx context.Context, opts PushOpts, root string, pusher chan<- *Meta, errs chan<- error) {
-	defer close(pusher)
-	pushMetas(ctx, opts, root, pusher, errs)
+func PushMetas(ctx context.Context, eh *logging.ErrorHandler, wg *sync.WaitGroup, opts PushOpts, root ...string) <-chan *Meta {
+	pusher := make(chan *Meta)
+	wg.Go(func() {
+		defer close(pusher)
+		for _, fp := range root {
+			pushMetas(ctx, eh, opts, fp, pusher)
+		}
+	})
+	return pusher
 }
 
 // Walks down path starting at root, stats every regular file, builds
 // and pushes *Meta objects to the pusher channel.
-func pushMetas(ctx context.Context, opts PushOpts, root string, pusher chan<- *Meta, errs chan<- error) {
-	walker := func(path string, d fs.DirEntry, err error)error {
+func pushMetas(ctx context.Context, eh *logging.ErrorHandler, opts PushOpts, root string, pusher chan<- *Meta) {
+	walker := func(path string, d fs.DirEntry, err error) error {
 		// Check for cancellation
 		select {
-			case <-ctx.Done():
+		case <-ctx.Done():
 			return fs.SkipAll
-			default:
+		default:
 		}
 		// Handle directory entries
 		if d.IsDir() {
@@ -110,32 +110,27 @@ func pushMetas(ctx context.Context, opts PushOpts, root string, pusher chan<- *M
 			return nil //skip directory entries
 		}
 		// Handle symlinks
-		if d.Type() & fs.ModeSymlink == fs.ModeSymlink {
+		if d.Type()&fs.ModeSymlink == fs.ModeSymlink {
 			if !opts.FollowSymlinks {
 				return nil
 			}
 			resolvedPath, err := resolveSymlink(filepath.Split(path))
-			if err != nil {
-				errs <- err
+			if eh.Error(err) {
 				return nil
 			}
-			pushMetas(ctx, opts, resolvedPath, pusher, errs)
+			pushMetas(ctx, eh, opts, resolvedPath, pusher)
 		}
 		// Handle regular files
 		if d.Type().IsRegular() {
 			info, err := d.Info()
-			if err != nil {
-				errs <- err
+			if eh.Error(err) {
 				return nil
 			}
 			pusher <- NewMeta(filepath.Dir(path), info)
 		}
 		return nil
 	}
-	err := filepath.WalkDir(root, walker)
-	if err != nil {
-		errs <- err
-	}
+	eh.Error(filepath.WalkDir(root, walker))
 }
 
 // Resolve the symlink name in directory dir.

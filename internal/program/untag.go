@@ -17,15 +17,13 @@ package program
 import (
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/softerrors"
-	"io/fs"
+	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"os"
-	"path/filepath"
 )
 
-func untagFile(parent string, info fs.FileInfo) error {
-	path := filepath.Join(parent, info.Name())
+func untagFile(meta *filesystem.Meta) error {
 	//Open file
-	f, err := os.Open(path)
+	f, err := os.Open(meta.Path())
 	if err != nil {
 		return err
 	}
@@ -52,7 +50,7 @@ func untagFile(parent string, info fs.FileInfo) error {
 		}
 	}
 	if commandLine.FlagPrint0() {
-		if _, err := printMe.Print0(path); err != nil {
+		if _, err := printMe.Print0(meta.Path()); err != nil {
 			return err
 		}
 	}

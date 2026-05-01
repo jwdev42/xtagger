@@ -19,22 +19,20 @@ import (
 	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/softerrors"
+	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"hash"
-	"io/fs"
 	"os"
-	"path/filepath"
 )
 
-func invalidateFile(parent string, info fs.FileInfo) error {
-	return reOrInvalidateFile(false, parent, info)
+func invalidateFile(meta *filesystem.Meta) error {
+	return reOrInvalidateFile(false, meta)
 }
 
-func revalidateFile(parent string, info fs.FileInfo) error {
-	return reOrInvalidateFile(true, parent, info)
+func revalidateFile(meta *filesystem.Meta) error {
+	return reOrInvalidateFile(true, meta)
 }
 
-func reOrInvalidateFile(revalidate bool, parent string, info fs.FileInfo) error {
-	path := filepath.Join(parent, info.Name())
+func reOrInvalidateFile(revalidate bool, meta *filesystem.Meta) error {
 	names := commandLine.Names()
 	filteredRecords := func(attr record.Attribute) record.Attribute {
 		if names != nil {
@@ -55,7 +53,7 @@ func reOrInvalidateFile(revalidate bool, parent string, info fs.FileInfo) error 
 		return hashMap
 	}
 	//Open file
-	f, err := os.Open(path)
+	f, err := os.Open(meta.Path())
 	if err != nil {
 		return softerrors.Consume(err)
 	}
@@ -98,7 +96,7 @@ func reOrInvalidateFile(revalidate bool, parent string, info fs.FileInfo) error 
 	}
 	//Print path if print0 is active
 	if commandLine.FlagPrint0() {
-		if _, err := printMe.Print0(path); err != nil {
+		if _, err := printMe.Print0(meta.Path()); err != nil {
 			return softerrors.Consume(err)
 		}
 	}

@@ -20,19 +20,17 @@ import (
 	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/softerrors"
-	"io/fs"
+	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"log/slog"
 	"os"
-	"path/filepath"
 )
 
-func tagFile(parent string, info fs.FileInfo) error {
-	path := filepath.Join(parent, info.Name())
+func tagFile(meta *filesystem.Meta) error {
 	name := commandLine.Names()[0]
 	algo := commandLine.FlagHash()
 	constraint := commandLine.TagConstraint()
 	//Open file
-	f, err := os.Open(path)
+	f, err := os.Open(meta.Path())
 	if err != nil {
 		return softerrors.Consume(err)
 	}
@@ -57,16 +55,16 @@ func tagFile(parent string, info fs.FileInfo) error {
 	}
 	//Check if a record with the designated name already exists
 	if attr.Exists(name) {
-		return softerrors.Consume(fmt.Errorf("Record \"%s\" already exists for path \"%s\"", name, path))
+		return softerrors.Consume(fmt.Errorf("Record \"%s\" already exists for path %q", name, meta.Path()))
 	}
 	//Hash file
-	slog.Debug("Hashing file", "path", path)
+	slog.Debug("Hashing file", "path", meta.Path())
 	hash := algo.New()
 	if err := hashes.Hash(f, hash); err != nil {
 		return softerrors.Consume(err)
 	}
 	//Create record
-	slog.Debug("Create new tag record", "path", path)
+	slog.Debug("Create new tag record", "path", meta.Path())
 	rec := record.NewRecord()
 	rec.Checksum = fmt.Sprintf("%x", hash.Sum(nil))
 	rec.HashAlgo = algo
@@ -78,10 +76,10 @@ func tagFile(parent string, info fs.FileInfo) error {
 		return softerrors.Consume(err)
 	}
 	// Send info log
-	slog.Info("Tagged file", "path", path, "checksum", rec.Checksum, "algorithm", rec.HashAlgo)
+	slog.Info("Tagged file", "path", meta.Path(), "checksum", rec.Checksum, "algorithm", rec.HashAlgo)
 	//Print path if print0 is active
 	if commandLine.FlagPrint0() {
-		if _, err := printMe.Print0(path); err != nil {
+		if _, err := printMe.Print0(meta.Path()); err != nil {
 			return softerrors.Consume(err)
 		}
 	}

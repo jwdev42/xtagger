@@ -1,4 +1,4 @@
-//This file is part of xtagger. ©2023 Jörg Walter.
+//This file is part of xtagger. ©2023-2026 Jörg Walter.
 //This program is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
@@ -20,46 +20,43 @@ import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/cli"
 	"github.com/jwdev42/xtagger/internal/logging"
-	"github.com/jwdev42/xtagger/internal/softerrors"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"github.com/jwdev42/xtagger/internal/xio/printer"
-	"io/fs"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"sync"
 )
 
 // Program entry point called by main().
 func Run() error {
 	var err error
-	//Setup logger
+	// Setup logger
 	dynamicLogLevel := setupDefaultLogger()
-	//Parse command line
+	// Parse command line
 	commandLine, err = cli.ParseCommandLine()
 	if err != nil {
 		return fmt.Errorf("Command line error: %s", err)
 	}
+	// Setup context
+	ctx := context.Background()
 	// Adjust log level
 	dynamicLogLevel.Set(commandLine.FlagLogLevel())
-	//Setup printer
+	// Setup printer
 	printMe = printer.NewPrinter(os.Stdout)
-	//Set soft error behaviour
-	if commandLine.FlagQuitOnSoftError() {
-		softerrors.StopOnSoftError()
-	}
-	//Execute command-specific branch
+	// Generate PushOpts
+	pushOpts := pushOptsFromCommandLine(commandLine)
+	// Execute command-specific branch
 	switch command := commandLine.Command(); command {
 	case cli.CommandTag:
-		return runWithOptionalMP(createContext(true), tagFile)
+		execPayload(ctx, pushOpts, commandLine.Threads(), tagFile, commandLine.Paths()...)
 	case cli.CommandPrint:
-		return run(createContext(false), printFile)
+		execPayload(ctx, pushOpts, commandLine.Threads(), printFile, commandLine.Paths()...)
 	case cli.CommandUntag:
-		return run(createContext(true), untagFile)
+		execPayload(ctx, pushOpts, commandLine.Threads(), untagFile, commandLine.Paths()...)
 	case cli.CommandInvalidate:
-		return run(createContext(true), invalidateFile)
+		execPayload(ctx, pushOpts, commandLine.Threads(), invalidateFile, commandLine.Paths()...)
 	case cli.CommandRevalidate:
-		return run(createContext(true), revalidateFile)
+		execPayload(ctx, pushOpts, commandLine.Threads(), revalidateFile, commandLine.Paths()...)
 	case cli.CommandLicenses:
 		printLicenses()
 	default:
@@ -80,73 +77,52 @@ func setupDefaultLogger() *slog.LevelVar {
 	return levelSwitch
 }
 
-func payloadRunner(
-		ctx context.Context,
-		errs chan<- error,
-		metas <-chan *Meta,
-		opts filesystem.PushOpts,
-		payload func(*Meta)error) {
-	payloadWrapper := func() {
-		
+func defaultErrorHandler(ctx context.Context, err error) {
+	slog.ErrorContext(ctx, err.Error())
+}
+
+func pushOptsFromCommandLine(cmd *cli.CommandLine) filesystem.PushOpts {
+	return filesystem.PushOpts{
+		FollowSymlinks: cmd.FlagFollowSymlinks(),
+		Recursive:      !cmd.ForbidRecursion(),
 	}
 }
 
-// Runs fileFunc multithreaded if the corresponding flag was set.
-func runWithOptionalMP(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
-	if commandLine.FlagMultiThread() {
-		return runMP(opts, fileFunc)
-	}
-	return run(opts, fileFunc)
-} 
-
-// Main runner for fileFunc, singlethreaded by default, can be wrapped by runMP for multithreading.
-func run(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
-	for _, path := range commandLine.Paths() {
-		info, err := os.Lstat(path)
-		if err != nil {
-			if softerrors.Consume(err) == nil {
-				continue
-			}
-			return err
+func execPayload(
+	ctx context.Context,
+	opts filesystem.PushOpts,
+	threads int,
+	payload func(*filesystem.Meta) error,
+	paths ...string) error {
+	// Setup error handler
+	eh, cancelEH := logging.NewErrorHandler(ctx, 10, defaultErrorHandler)
+	// Use closure to ensure a finished error handler
+	func() {
+		defer cancelEH()
+		// Setup WaitGroup
+		wg := &sync.WaitGroup{}
+		// Stat files
+		metas := filesystem.PushMetas(ctx, eh, wg, opts, paths...)
+		// Setup semaphore
+		semaphore := make(chan struct{}, threads)
+		// Run payload on files
+		for meta := range metas {
+			wg.Go(func() {
+				semaphore <- struct{}{}
+				defer func() { <-semaphore }()
+				eh.Error(payload(meta))
+			})
 		}
-		if info.IsDir() {
-			if commandLine.ForbidRecursion() {
-				if err := softerrors.Errorf("Recursion is forbidden, cannot descend in directory %s", path); err == nil {
-					continue
-				} else {
-					return err
-				}
-			}
-			err = filesystem.WalkDir(path, opts, fileFunc)
-		} else {
-			err = filesystem.ExamineFile(filepath.Dir(path), info, opts, fileFunc)
-		}
-		if err != nil {
-			if errors.Is(err, fs.SkipAll) {
-				slog.Debug(err.Error())
-				return nil
-			}
-			return err
-		}
-	}
-	return nil
-}
-
-// Wrapper for run that runs fileFunc in parallel.
-func runMP(opts *filesystem.Context, fileFunc filesystem.FileExaminer) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	errs := make(chan error)
-	waitForErrorCollector := make(chan struct{})
-	waitForExaminers := new(sync.WaitGroup)
-	defer func() { <-waitForErrorCollector }()
-	defer close(errs)
-	defer waitForExaminers.Wait()
-	go func() {
-		defer close(waitForErrorCollector)
-		for err := <-errs; err != nil; err = <-errs {
-			slog.Error(err.Error())
-		}
-		slog.Debug("runMP: Error callback goroutine exits...")
+		// Wait for payloads to finish
+		wg.Wait()
 	}()
-	return run(opts, wrapFileExaminer(ctx, cancel, waitForExaminers, errs, fileFunc))
+	// Examinate error count
+	errs := eh.Errors()
+	switch errs {
+	case 0:
+		return nil
+	case 1:
+		return errors.New("An error occured during command execution")
+	}
+	return fmt.Errorf("%d errors occured during command execution", errs)
 }
