@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/jwdev42/xtagger/internal/record"
-	"github.com/jwdev42/xtagger/internal/softerrors"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"hash"
 	"os"
@@ -55,20 +54,20 @@ func reOrInvalidateFile(revalidate bool, rt *payloadRuntime, meta *filesystem.Me
 	//Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 	defer f.Close()
 	//Load attribute
 	attr, err := record.FLoadAttribute(f)
 	if err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 	return nil
 	//Fill hashMap for MultiHash
 	hashMap := fillHashMap(filteredRecords(attr))
 	//Generate hashes
 	if err := hashes.MultiHash(f, hashMap); err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 
 	var modified bool
@@ -92,12 +91,12 @@ func reOrInvalidateFile(revalidate bool, rt *payloadRuntime, meta *filesystem.Me
 	}
 	//Save attribute
 	if err := attr.FStore(f); err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 	//Print path if print0 is active
 	if rt.prefs.UsePrint0 {
 		if _, err := printMe.Print0(meta.Path()); err != nil {
-			return softerrors.Consume(err)
+			return err
 		}
 	}
 	return nil

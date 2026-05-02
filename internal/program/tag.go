@@ -19,7 +19,6 @@ import (
 	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/jwdev42/xtagger/internal/record"
-	"github.com/jwdev42/xtagger/internal/softerrors"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"log/slog"
 	"os"
@@ -32,13 +31,13 @@ func tagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 	//Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 	defer f.Close()
 	//Load attribute
 	attr, err := record.FLoadAttribute(f)
 	if err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 	//Process untagged constraint
 	if constraint == config.TagConstraintUntagged && len(attr) > 0 {
@@ -55,13 +54,13 @@ func tagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 	}
 	//Check if a record with the designated name already exists
 	if attr.Exists(name) {
-		return softerrors.Consume(fmt.Errorf("Record \"%s\" already exists for path %q", name, meta.Path()))
+		return fmt.Errorf("Record \"%s\" already exists for path %q", name, meta.Path())
 	}
 	//Hash file
 	slog.Debug("Hashing file", "path", meta.Path())
 	hash := algo.New()
 	if err := hashes.Hash(f, hash); err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 	//Create record
 	slog.Debug("Create new tag record", "path", meta.Path())
@@ -73,14 +72,14 @@ func tagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 	attr[name] = rec
 	//Save attribute
 	if err := attr.FStore(f); err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 	// Send info log
 	slog.Info("Tagged file", "path", meta.Path(), "checksum", rec.Checksum, "algorithm", rec.HashAlgo)
 	//Print path if print0 is active
 	if rt.prefs.UsePrint0 {
 		if _, err := printMe.Print0(meta.Path()); err != nil {
-			return softerrors.Consume(err)
+			return err
 		}
 	}
 	return nil

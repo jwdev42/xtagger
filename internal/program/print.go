@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/record"
-	"github.com/jwdev42/xtagger/internal/softerrors"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"os"
 )
@@ -40,13 +39,13 @@ func printFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 	//Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 	defer f.Close()
 	//Load Attributes
 	attr, err := record.FLoadAttribute(f)
 	if err != nil {
-		return softerrors.Consume(err)
+		return err
 	}
 	//Filter Attributes by name
 	if names := rt.prefs.Names; names != nil {
@@ -57,7 +56,7 @@ func printFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 		switch constraint {
 		case config.PrintConstraintUntagged:
 			//Print recordless file if PrintConstraintUntagged is set
-			return softerrors.Consume(print(attr, meta.Path()))
+			return print(attr, meta.Path())
 		}
 		//Skip file otherwise
 		return nil
@@ -65,7 +64,7 @@ func printFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 
 	switch constraint {
 	case config.PrintConstraintNone:
-		return softerrors.Consume(print(attr, meta.Path())) //Print tagged file if no constraint is set
+		return print(attr, meta.Path()) //Print tagged file if no constraint is set
 	case config.PrintConstraintUntagged:
 		return nil //Skip tagged file
 	}
@@ -85,12 +84,12 @@ func printFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 	case config.PrintConstraintInvalid:
 		//Print if all records are invalid
 		if !hasValidEntry {
-			return softerrors.Consume(print(attr, meta.Path()))
+			return print(attr, meta.Path())
 		}
 	case config.PrintConstraintValid:
 		//Print if all records are valid
 		if !hasInvalidEntry {
-			return softerrors.Consume(print(attr, meta.Path()))
+			return print(attr, meta.Path())
 		}
 	default:
 		panic("You're not supposed to be here")

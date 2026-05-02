@@ -16,7 +16,6 @@ package program
 
 import (
 	"github.com/jwdev42/xtagger/internal/record"
-	"github.com/jwdev42/xtagger/internal/softerrors"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"os"
 )
@@ -46,7 +45,7 @@ func untagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 		}
 	} else {
 		if err := record.PurgeAttr(f); err != nil {
-			return softerrors.Consume(err)
+			return err
 		}
 	}
 	if rt.prefs.UsePrint0 {
