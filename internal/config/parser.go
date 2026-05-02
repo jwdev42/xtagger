@@ -28,7 +28,6 @@ type commandParserResult struct {
 	paths           []string        // Paths to process
 	names           []string        // Record names to consider
 	printRecords    bool            // Flag for CommandPrint that controls if records are being printed
-	tagSizeLimit    int64           // Quota size limit
 	tagConstraint   TagConstraint   // Constraint for command CommandTag
 	printConstraint PrintConstraint // Constraint for command CommandPrint
 	untagConstraint UntagConstraint // Constraint for command CommandUntag
@@ -128,16 +127,6 @@ func (r *commandParser) parseCommandTag() error {
 	if err := r.parseName(); err != nil {
 		return err
 	}
-	//Parse optional size restriction
-	tok, ok := r.tok()
-	if !ok {
-		return io.EOF
-	}
-	if tok == "up" {
-		if err := r.parseTagSizeLimit(); err != nil {
-			return err
-		}
-	}
 	//Parse "for"
 	if err := r.parseLiteral("for"); err != nil {
 		return err
@@ -225,31 +214,6 @@ func (r *commandParser) parseTagConstraint() error {
 		r.res.tagConstraint = TagConstraintInvalid
 	default:
 		return r.error("untagged", "invalid")
-	}
-	r.adv()
-	return nil
-}
-
-func (r *commandParser) parseTagSizeLimit() error {
-	tok, ok := r.tok()
-	if !ok {
-		return io.EOF
-	}
-	//parse "up"
-	if err := r.parseLiteral("up"); err != nil {
-		return err
-	}
-	//parse "to"
-	if err := r.parseLiteral("to"); err != nil {
-		return err
-	}
-	//parse SIZE_SPEC
-	tok, ok = r.tok()
-	if !ok {
-		return io.EOF
-	}
-	if err := parseSizeFunc(&r.res.tagSizeLimit)(tok); err != nil {
-		return err
 	}
 	r.adv()
 	return nil
