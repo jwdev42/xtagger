@@ -23,20 +23,20 @@ import (
 	"os"
 )
 
-func printFile(meta *filesystem.Meta) error {
+func printFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 	print := func(attr record.Attribute, path string) error {
-		if commandLine.FlagPrint0() {
+		if rt.prefs.UsePrint0 {
 			_, err := printMe.Print0(path)
 			return err
 		}
-		if commandLine.FlagPrintRecords() {
+		if rt.prefs.PrintRecords {
 			_, err := attr.FprintRecordsWithPath(os.Stdout, path)
 			return err
 		}
 		_, err := fmt.Printf("%s\n", path)
 		return err
 	}
-	constraint := commandLine.PrintConstraint()
+	constraint := rt.prefs.PrintConstraint
 	//Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
@@ -49,7 +49,7 @@ func printFile(meta *filesystem.Meta) error {
 		return softerrors.Consume(err)
 	}
 	//Filter Attributes by name
-	if names := commandLine.Names(); names != nil {
+	if names := rt.prefs.Names; names != nil {
 		attr = attr.FilterByName(names...)
 	}
 

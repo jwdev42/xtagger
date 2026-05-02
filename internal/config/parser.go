@@ -22,44 +22,66 @@ import (
 	"unicode"
 )
 
+// commandParserResult holds a parsed command
+type commandParserResult struct {
+	command         Command         // Application command
+	paths           []string        // Paths to process
+	names           []string        // Record names to consider
+	printRecords    bool            // Flag for CommandPrint that controls if records are being printed
+	tagSizeLimit    int64           // Quota size limit
+	tagConstraint   TagConstraint   // Constraint for command CommandTag
+	printConstraint PrintConstraint // Constraint for command CommandPrint
+	untagConstraint UntagConstraint // Constraint for command CommandUntag
+}
+
 // CLI command parser.
-type parser struct {
-	tokens      []string
-	pos         int
-	commandLine *CommandLine
+type commandParser struct {
+	tokens []string
+	pos    int
+	res    *commandParserResult
+}
+
+func newCommandParser(args []string) *commandParser {
+	return &commandParser{
+		tokens: args,
+	}
 }
 
 // Parser entry point, use this for parsing a command line
-func (r *parser) start() error {
+func (r *commandParser) start() (*commandParserResult, error) {
+	// Reset parser state
+	r.pos = 0
+	r.res = &commandParserResult{}
+	// Start to parse
 	command, err := r.parseCommand()
 	if err != nil {
-		return r.error("COMMAND")
+		return nil, fmt.Errorf("Failed to parse command: %s", err)
 	}
-	r.commandLine.command = command
-	return nil
+	r.res.command = command
+	return r.res, nil
 }
 
 // Advances to the next token.
-func (r *parser) adv() {
+func (r *commandParser) adv() {
 	r.pos++
 }
 
 // Returns the current token and true if it exists for the current position.
 // If there is no token left, "EOF" and false will be returned.
-func (r *parser) tok() (string, bool) {
+func (r *commandParser) tok() (string, bool) {
 	if len(r.tokens) > r.pos {
 		return r.tokens[r.pos], true
 	}
 	return "EOF", false
 }
 
-func (r *parser) error(expected ...string) error {
+func (r *commandParser) error(expected ...string) error {
 	tok, _ := r.tok()
 	return fmt.Errorf("[Token at index %03d] Expected %q, got %q", r.pos, strings.Join(expected, "\" or \""), tok)
 }
 
 // Parse a command.
-func (r *parser) parseCommand() (Command, error) {
+func (r *commandParser) parseCommand() (Command, error) {
 	tok, ok := r.tok()
 	if !ok {
 		return CommandInvalid, io.EOF
@@ -91,7 +113,7 @@ func (r *parser) parseCommand() (Command, error) {
 	return command, nil
 }
 
-func (r *parser) parseCommandTag() error {
+func (r *commandParser) parseCommandTag() error {
 	//parse "as"
 	if err := r.parseLiteral("as"); err != nil {
 		//if "as" is not found, parse tag constraint, then "as"
@@ -124,7 +146,7 @@ func (r *parser) parseCommandTag() error {
 	return r.parsePathsUntilEOF()
 }
 
-func (r *parser) parseCommandPrint() error {
+func (r *commandParser) parseCommandPrint() error {
 	if err := r.parseLiteral("untagged"); err == nil {
 		//Parse "for" after "untagged"
 		if err := r.parseLiteral("for"); err != nil {
@@ -137,7 +159,7 @@ func (r *parser) parseCommandPrint() error {
 	r.parsePrintConstraint()
 	//Parse optional literal "records"
 	if err := r.parseLiteral("records"); err == nil {
-		r.commandLine.printRecords = true
+		r.res.printRecords = true
 	}
 	//Parse optional "by" + NAMES
 	if err := r.parseLiteral("by"); err == nil {
@@ -153,7 +175,7 @@ func (r *parser) parseCommandPrint() error {
 	return r.parsePathsUntilEOF()
 }
 
-func (r *parser) parseCommandUntag() error {
+func (r *commandParser) parseCommandUntag() error {
 	//Parse mandatory CONSTRAINT
 	if err := r.parseUntagConstraint(); err != nil {
 		return err
@@ -166,7 +188,7 @@ func (r *parser) parseCommandUntag() error {
 	return r.parsePathsUntilEOF()
 }
 
-func (r *parser) parseCommandInvalidateOrRevalidate() error {
+func (r *commandParser) parseCommandInvalidateOrRevalidate() error {
 	//parse "all"
 	if err := r.parseLiteral("all"); err != nil {
 		//parse NAMES if token is not "all"
@@ -182,7 +204,7 @@ func (r *parser) parseCommandInvalidateOrRevalidate() error {
 	return r.parsePathsUntilEOF()
 }
 
-func (r *parser) parseCommandLicense() error {
+func (r *commandParser) parseCommandLicense() error {
 	//catch "EOF" token
 	_, ok := r.tok()
 	if !ok {
@@ -191,16 +213,16 @@ func (r *parser) parseCommandLicense() error {
 	return r.error(io.EOF.Error())
 }
 
-func (r *parser) parseTagConstraint() error {
+func (r *commandParser) parseTagConstraint() error {
 	tok, ok := r.tok()
 	if !ok {
 		return io.EOF
 	}
 	switch tok {
 	case "untagged":
-		r.commandLine.tagConstraint = TagConstraintUntagged
+		r.res.tagConstraint = TagConstraintUntagged
 	case "invalid":
-		r.commandLine.tagConstraint = TagConstraintInvalid
+		r.res.tagConstraint = TagConstraintInvalid
 	default:
 		return r.error("untagged", "invalid")
 	}
@@ -208,7 +230,7 @@ func (r *parser) parseTagConstraint() error {
 	return nil
 }
 
-func (r *parser) parseTagSizeLimit() error {
+func (r *commandParser) parseTagSizeLimit() error {
 	tok, ok := r.tok()
 	if !ok {
 		return io.EOF
@@ -226,23 +248,23 @@ func (r *parser) parseTagSizeLimit() error {
 	if !ok {
 		return io.EOF
 	}
-	if err := r.commandLine.parseSizeStatement(tok); err != nil {
+	if err := parseSizeFunc(&r.res.tagSizeLimit)(tok); err != nil {
 		return err
 	}
 	r.adv()
 	return nil
 }
 
-func (r *parser) parsePrintConstraint() error {
+func (r *commandParser) parsePrintConstraint() error {
 	tok, ok := r.tok()
 	if !ok {
 		return r.error("invalid", "valid")
 	}
 	switch tok {
 	case "invalid":
-		r.commandLine.printConstraint = PrintConstraintInvalid
+		r.res.printConstraint = PrintConstraintInvalid
 	case "valid":
-		r.commandLine.printConstraint = PrintConstraintValid
+		r.res.printConstraint = PrintConstraintValid
 	default:
 		return r.error("invalid", "valid")
 	}
@@ -250,16 +272,16 @@ func (r *parser) parsePrintConstraint() error {
 	return nil
 }
 
-func (r *parser) parseUntagConstraint() error {
+func (r *commandParser) parseUntagConstraint() error {
 	tok, ok := r.tok()
 	if !ok {
 		return io.EOF
 	}
 	switch tok {
 	case "all":
-		r.commandLine.untagConstraint = UntagConstraintAll
+		r.res.untagConstraint = UntagConstraintAll
 	case "invalid":
-		r.commandLine.untagConstraint = UntagConstraintInvalid
+		r.res.untagConstraint = UntagConstraintInvalid
 	default:
 		return r.parseUntagNamesConstraint()
 	}
@@ -267,7 +289,7 @@ func (r *parser) parseUntagConstraint() error {
 	return nil
 }
 
-func (r *parser) parseUntagNamesConstraint() error {
+func (r *commandParser) parseUntagNamesConstraint() error {
 	if err := r.parseNames(); err != nil {
 		return err
 	}
@@ -279,25 +301,25 @@ func (r *parser) parseUntagNamesConstraint() error {
 		return err
 	}
 	//Set UntagConstraintInvalid after parsing "if invalid"
-	r.commandLine.untagConstraint = UntagConstraintInvalid
+	r.res.untagConstraint = UntagConstraintInvalid
 	return nil
 }
 
-func (r *parser) parsePath() error {
+func (r *commandParser) parsePath() error {
 	tok, ok := r.tok()
 	if !ok {
 		return io.EOF
 	}
-	if r.commandLine.paths == nil {
-		r.commandLine.paths = []string{tok}
+	if r.res.paths == nil {
+		r.res.paths = []string{tok}
 	} else {
-		r.commandLine.paths = append(r.commandLine.paths, tok)
+		r.res.paths = append(r.res.paths, tok)
 	}
 	r.adv()
 	return nil
 }
 
-func (r *parser) parseNames() error {
+func (r *commandParser) parseNames() error {
 	if err := r.parseLiteral("name"); err != nil {
 		return err
 	}
@@ -313,7 +335,7 @@ func (r *parser) parseNames() error {
 	return r.parseNames()
 }
 
-func (r *parser) parseName() error {
+func (r *commandParser) parseName() error {
 	//Closure for name validation
 	validateName := func(name string) error {
 		if len(name) < 1 {
@@ -339,16 +361,16 @@ func (r *parser) parseName() error {
 		return fmt.Errorf("Invalid name: %s", err)
 	}
 	//Add name to names slice
-	if r.commandLine.names == nil {
-		r.commandLine.names = []string{tok}
+	if r.res.names == nil {
+		r.res.names = []string{tok}
 	} else {
-		r.commandLine.names = append(r.commandLine.names, tok)
+		r.res.names = append(r.res.names, tok)
 	}
 	r.adv()
 	return nil
 }
 
-func (r *parser) parseLiteral(literal string) error {
+func (r *commandParser) parseLiteral(literal string) error {
 	tok, ok := r.tok()
 	if !ok {
 		return io.EOF
@@ -361,7 +383,7 @@ func (r *parser) parseLiteral(literal string) error {
 }
 
 // Expects one mandatory path, then parses optional paths until EOF
-func (r *parser) parsePathsUntilEOF() error {
+func (r *commandParser) parsePathsUntilEOF() error {
 	//Parse mandatory path
 	if err := r.parsePath(); err != nil {
 		return err

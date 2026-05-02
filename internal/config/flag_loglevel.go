@@ -22,6 +22,7 @@ import (
 // Type for parsing a log level string
 type flagLogLevel struct {
 	logLevel slog.Level
+	used     bool // True if a call to Set() was successful
 }
 
 func (r *flagLogLevel) Get() any {
@@ -37,6 +38,19 @@ func (r *flagLogLevel) String() string {
 
 func (r *flagLogLevel) Set(name string) error {
 	level, err := logging.ParseLogLevelName(name)
-	r.logLevel = level
+	if err != nil {
+		r.logLevel = level
+		r.used = true
+	}
 	return err
+}
+
+// Level implements slog.Leveler
+func (r *flagLogLevel) Level() slog.Level {
+	return r.logLevel
+}
+
+// Used returns true if r.Set() was used successfully
+func (r *flagLogLevel) Used() bool {
+	return r.used
 }

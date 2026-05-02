@@ -24,16 +24,16 @@ import (
 	"os"
 )
 
-func invalidateFile(meta *filesystem.Meta) error {
-	return reOrInvalidateFile(false, meta)
+func invalidateFile(rt *payloadRuntime, meta *filesystem.Meta) error {
+	return reOrInvalidateFile(false, rt, meta)
 }
 
-func revalidateFile(meta *filesystem.Meta) error {
-	return reOrInvalidateFile(true, meta)
+func revalidateFile(rt *payloadRuntime, meta *filesystem.Meta) error {
+	return reOrInvalidateFile(true, rt, meta)
 }
 
-func reOrInvalidateFile(revalidate bool, meta *filesystem.Meta) error {
-	names := commandLine.Names()
+func reOrInvalidateFile(revalidate bool, rt *payloadRuntime, meta *filesystem.Meta) error {
+	names := rt.prefs.Names
 	filteredRecords := func(attr record.Attribute) record.Attribute {
 		if names != nil {
 			return attr.FilterByName(names...)
@@ -95,7 +95,7 @@ func reOrInvalidateFile(revalidate bool, meta *filesystem.Meta) error {
 		return softerrors.Consume(err)
 	}
 	//Print path if print0 is active
-	if commandLine.FlagPrint0() {
+	if rt.prefs.UsePrint0 {
 		if _, err := printMe.Print0(meta.Path()); err != nil {
 			return softerrors.Consume(err)
 		}

@@ -25,10 +25,10 @@ import (
 	"os"
 )
 
-func tagFile(meta *filesystem.Meta) error {
-	name := commandLine.Names()[0]
-	algo := commandLine.FlagHash()
-	constraint := commandLine.TagConstraint()
+func tagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
+	name := rt.prefs.Names[0]
+	algo := rt.prefs.UseHash
+	constraint := rt.prefs.TagConstraint
 	//Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
@@ -78,7 +78,7 @@ func tagFile(meta *filesystem.Meta) error {
 	// Send info log
 	slog.Info("Tagged file", "path", meta.Path(), "checksum", rec.Checksum, "algorithm", rec.HashAlgo)
 	//Print path if print0 is active
-	if commandLine.FlagPrint0() {
+	if rt.prefs.UsePrint0 {
 		if _, err := printMe.Print0(meta.Path()); err != nil {
 			return softerrors.Consume(err)
 		}

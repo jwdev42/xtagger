@@ -18,213 +18,107 @@ import (
 	"flag"
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/hashes"
-	"log/slog"
 	"os"
-	"slices"
 	"strconv"
 )
 
-// Represents a parsed command line argument set.
-type CommandLine struct {
-	command             Command //Specified command
-	paths               []string
-	names               []string
-	flagLogLevel        slog.Level //parsed loglevel
-	flagFollowSymlinks  bool
-	flagHash            hashes.Algo
-	flagQuitOnSoftError bool
-	flagPrint0          bool
-	printRecords        bool
-	forbidRecursion     bool
-	quota               int64
-	quotaContinue       bool
-	threads             int
-	tagConstraint       TagConstraint
-	untagConstraint     UntagConstraint
-	printConstraint     PrintConstraint
-}
-
-func (r *CommandLine) Command() Command {
-	return r.command
-}
-
-func (r *CommandLine) Paths() []string {
-	return r.paths
-}
-
-func (r *CommandLine) Names() []string {
-	return r.names
-}
-
-func (r *CommandLine) FlagFollowSymlinks() bool {
-	return r.flagFollowSymlinks
-}
-
-func (r *CommandLine) FlagLogLevel() slog.Level {
-	return r.flagLogLevel
-}
-
-func (r *CommandLine) FlagHash() hashes.Algo {
-	return r.flagHash
-}
-
-func (r *CommandLine) FlagQuitOnSoftError() bool {
-	return r.flagQuitOnSoftError
-}
-
-func (r *CommandLine) FlagPrint0() bool {
-	return r.flagPrint0
-}
-
-func (r *CommandLine) FlagPrintRecords() bool {
-	return r.printRecords
-}
-
-func (r *CommandLine) ForbidRecursion() bool {
-	return r.forbidRecursion
-}
-
-func (r *CommandLine) SizeQuota() int64 {
-	return r.quota
-}
-
-func (r *CommandLine) FlagQuotaContinue() bool {
-	return r.quotaContinue
-}
-
-func (r *CommandLine) Threads() int {
-	if r.threads < 1 {
-		return 1
+// ParseCommandLine parses and validates command line arguments.
+// ParseCommandLine fills argument prefs with the parsed values.
+func ParseCommandLine(prefs *Preferences) error {
+	// Stage 1: Parse flags
+	var hashAlgo hashes.Algo
+	var logLevel = &flagLogLevel{}
+	var quotaSize int64
+	var threads int
+	var followSymlinks, usePrint0, useRecursion bool
+	main := flag.NewFlagSet("main", flag.ContinueOnError)
+	main.Var(logLevel, "loglevel", "Set the loglevel")
+	main.Func("hash", "Specify the hashing algorithm", parseHashAlgoFunc(&hashAlgo))
+	main.Func("quota", "Specify a quota", parseSizeFunc(&quotaSize))
+	main.IntVar(&threads, "threads", prefs.Threads, "Number of threads, set this to 1 on HDDs")
+	main.BoolVar(&followSymlinks, "symlinks", prefs.FollowSymlinks, "Program follows symlinks if true")
+	main.BoolVar(&usePrint0, "print0", prefs.UsePrint0, "Print processed file paths null-terminated")
+	main.BoolVar(&useRecursion, "recursive", prefs.UseRecursion, "Recurse into subdirectories if true")
+	if err := main.Parse(os.Args[1:]); err != nil {
+		return err
 	}
-	return r.threads
-}
-
-func (r *CommandLine) TagConstraint() TagConstraint {
-	return r.tagConstraint
-}
-
-func (r *CommandLine) UntagConstraint() UntagConstraint {
-	return r.untagConstraint
-}
-
-func (r *CommandLine) PrintConstraint() PrintConstraint {
-	return r.printConstraint
-}
-
-func (r *CommandLine) parseHashAlgo(input string) error {
-	hash, err := hashes.ParseAlgo(input)
+	// Stage 2: Parse command
+	commandArgs, err := newCommandParser(main.Args()).start()
 	if err != nil {
 		return err
 	}
-	r.flagHash = hash
+	// Stage 3: Apply parsed vars to prefs
+	prefs.Command = commandArgs.command
+	prefs.Paths = commandArgs.paths
+	prefs.Names = commandArgs.names
+	if hashAlgo != hashes.INVALID {
+		prefs.UseHash = hashAlgo
+	}
+	if logLevel.Used() {
+		prefs.LogLevel.Set(logLevel.Level())
+	}
+	if quotaSize > 0 {
+		prefs.Quota = quotaSize
+	}
+	prefs.Threads = threads
+	prefs.FollowSymlinks = followSymlinks
+	prefs.UsePrint0 = usePrint0
+	prefs.UseRecursion = useRecursion
+	prefs.TagConstraint = commandArgs.tagConstraint
+	prefs.PrintConstraint = commandArgs.printConstraint
+	prefs.UntagConstraint = commandArgs.untagConstraint
 	return nil
 }
 
-func (r *CommandLine) parseSizeStatement(input string) error {
-	var base = make([]rune, len(input))
-	var suffix string
-	//Parse size limit integer
-	for i, ch := range input {
-		if !(ch >= 0x30 && ch <= 0x39) {
-			base = base[:i]
-			suffix = input[i:]
-			break
+func parseHashAlgoFunc(storage *hashes.Algo) func(string) error {
+	return func(input string) error {
+		hash, err := hashes.ParseAlgo(input)
+		if err != nil {
+			return err
 		}
-		base[i] = ch
+		*storage = hash
+		return nil
 	}
-	sizeLimit, err := strconv.ParseInt(string(base), 10, 64)
-	if err != nil {
-		return fmt.Errorf("Could not parse size statement: %s", err)
-	}
-	//Parse optional size suffix
-	const kib = 1024
-	const mib = kib * 1024
-	const gib = mib * 1024
-	const tib = gib * 1024
-	switch suffix {
-	case "":
-		r.quota = sizeLimit
-	case "K":
-		r.quota = sizeLimit * kib
-	case "M":
-		r.quota = sizeLimit * mib
-	case "G":
-		r.quota = sizeLimit * gib
-	case "T":
-		r.quota = sizeLimit * tib
-	default:
-		return fmt.Errorf("Could not parse size statement: Unknown suffix: \"%s\"", suffix)
-	}
-	return nil
 }
 
-// Parses and validates command line arguments.
-func ParseCommandLine() (*CommandLine, error) {
-	//Stage 1: Parse flags
-	var cmd = new(CommandLine)
-	cmd.flagHash = hashes.SHA256 //Default hash algorithm
-	var logLevel = &flagLogLevel{}
-	main := flag.NewFlagSet("main", flag.ContinueOnError)
-	main.Var(logLevel, "ll", "Set the loglevel")
-	main.BoolVar(&cmd.flagFollowSymlinks, "symlinks", false, "Program follows symlinks if true")
-	main.Func("hash", "Specify the hashing algorithm", cmd.parseHashAlgo)
-	main.Func("limit", "Specify the size limit", cmd.parseSizeStatement)
-	main.BoolVar(&cmd.flagQuitOnSoftError, "hard", false, "Quit on every error if true")
-	main.IntVar(&cmd.threads, "threads", 4, "Number of threads, set this to 1 on HDDs")
-	main.BoolVar(&cmd.flagPrint0, "print0", false, "Print processed file paths null-terminated")
-	if err := main.Parse(os.Args[1:]); err != nil {
-		return nil, err
+func parseSizeFunc(size *int64) func(string) error {
+	return func(input string) error {
+		var base = make([]rune, len(input))
+		var suffix string
+		//Parse size limit integer
+		for i, ch := range input {
+			if !(ch >= 0x30 && ch <= 0x39) {
+				base = base[:i]
+				suffix = input[i:]
+				break
+			}
+			base[i] = ch
+		}
+		sizeLimit, err := strconv.ParseInt(string(base), 10, 64)
+		if err != nil {
+			return fmt.Errorf("Could not parse size statement: %s", err)
+		}
+		//Parse optional size suffix
+		const (
+			kib = 1024
+			mib = kib * kib
+			gib = mib * kib
+			tib = gib * kib
+		)
+		switch suffix {
+		case "":
+		case "K":
+			sizeLimit *= kib
+		case "M":
+			sizeLimit *= mib
+		case "G":
+			sizeLimit *= gib
+		case "T":
+			sizeLimit *= tib
+		default:
+			return fmt.Errorf("Could not parse size statement: Unknown suffix: \"%s\"", suffix)
+		}
+		*size = sizeLimit
+		return nil
 	}
-	cmd.flagLogLevel = logLevel.Get().(slog.Level)
-	//Stage 2: Parse command
-	p := &parser{
-		tokens:      main.Args(),
-		commandLine: cmd,
-	}
-	if err := p.start(); err != nil {
-		return nil, err
-	}
-	return cmd, nil
-}
-
-// Returns an error of b don't holds the same data as a.
-// This is a debug function used by unit tests.
-func (a *CommandLine) mustEqual(b *CommandLine) error {
-	differs := func(field string, a, b any) error {
-		return fmt.Errorf("Field %s differs: A: %v, B: %v", field, a, b)
-	}
-	if a.command != b.command {
-		return differs("command", a.command, b.command)
-	}
-	if slices.Compare(a.paths, b.paths) != 0 {
-		return differs("paths", a.paths, b.paths)
-	}
-	if slices.Compare(a.names, b.names) != 0 {
-		return differs("names", a.names, b.names)
-	}
-	if a.flagLogLevel != b.flagLogLevel {
-		return differs("flagLogLevel", a.flagLogLevel, b.flagLogLevel)
-	}
-	if a.flagFollowSymlinks != b.flagFollowSymlinks {
-		return differs("flagFollowSymlinks", a.flagFollowSymlinks, b.flagFollowSymlinks)
-	}
-	if a.flagHash != b.flagHash {
-		return differs("flagHash", a.flagHash, b.flagHash)
-	}
-	if a.flagQuitOnSoftError != b.flagQuitOnSoftError {
-		return differs("flagQuitOnSoftError", a.flagQuitOnSoftError, b.flagQuitOnSoftError)
-	}
-	if a.flagPrint0 != b.flagPrint0 {
-		return differs("flagPrint0", a.flagPrint0, b.flagPrint0)
-	}
-	if a.tagConstraint != b.tagConstraint {
-		return differs("tagConstraint", a.tagConstraint, b.tagConstraint)
-	}
-	if a.untagConstraint != b.untagConstraint {
-		return differs("untagConstraint", a.untagConstraint, b.untagConstraint)
-	}
-	if a.flagLogLevel != b.flagLogLevel {
-		return differs("printConstraint", a.printConstraint, b.printConstraint)
-	}
-	return nil
 }

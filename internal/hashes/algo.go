@@ -24,9 +24,10 @@ import (
 )
 
 const (
+	INVALID   Algo = ""          // Placeholder for invalid value
 	SHA256    Algo = "SHA256"    //SHA 256
-	RIPEMD160      = "RIPEMD160" //RIPEMD 160
-	SHA3256        = "SHA3256"   //SHA3 256
+	RIPEMD160 Algo = "RIPEMD160" //RIPEMD 160
+	SHA3256   Algo = "SHA3256"   //SHA3 256
 )
 
 // Represents a name of a particular hashing algorithm at a particluar length.
@@ -43,7 +44,7 @@ func ParseAlgo(Name string) (Algo, error) {
 	case "SHA3256", "sha3256", "SHA3_256", "sha3_256":
 		return SHA3256, nil
 	}
-	return "", fmt.Errorf("Unknown hashing algorithm %q", Name)
+	return INVALID, fmt.Errorf("Unknown hashing algorithm %q", Name)
 }
 
 // Returns a usable hash.Hash interface. If the receiver is not a valid name for

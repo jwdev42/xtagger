@@ -21,20 +21,20 @@ import (
 	"os"
 )
 
-func untagFile(meta *filesystem.Meta) error {
+func untagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 	//Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	if commandLine.Names() != nil {
+	if len(rt.prefs.Names) > 0 {
 		attr, err := record.FLoadAttribute(f)
 		if err != nil {
 			return err
 		}
 		initialLength := len(attr)
-		for _, name := range commandLine.Names() {
+		for _, name := range rt.prefs.Names {
 			delete(attr, name)
 		}
 		if initialLength == len(attr) {
@@ -49,7 +49,7 @@ func untagFile(meta *filesystem.Meta) error {
 			return softerrors.Consume(err)
 		}
 	}
-	if commandLine.FlagPrint0() {
+	if rt.prefs.UsePrint0 {
 		if _, err := printMe.Print0(meta.Path()); err != nil {
 			return err
 		}

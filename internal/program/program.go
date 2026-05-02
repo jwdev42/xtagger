@@ -29,44 +29,40 @@ import (
 
 // Program entry point called by main().
 func Run() error {
-	var err error
-	// Setup logger
-	dynamicLogLevel := setupDefaultLogger()
-	// Parse command line
-	commandLine, err = config.ParseCommandLine()
-	if err != nil {
-		return fmt.Errorf("Command line error: %s", err)
-	}
 	// Setup context
 	ctx := context.Background()
-	// Adjust log level
-	dynamicLogLevel.Set(commandLine.FlagLogLevel())
+	// Create preferences
+	prefs := config.DefaultPreferences()
+	// Setup logger
+	setupDefaultLogger(prefs.LogLevel)
+	// Parse command line
+	if err := config.ParseCommandLine(prefs); err != nil {
+		return fmt.Errorf("Command line error: %s", err)
+	}
 	// Setup printer
 	printMe = printer.NewPrinter(os.Stdout)
-	// Generate PushOpts
-	pushOpts := pushOptsFromCommandLine(commandLine)
 	// Execute command-specific branch
-	switch command := commandLine.Command(); command {
+	switch prefs.Command {
 	case config.CommandTag:
-		execPayload(ctx, pushOpts, commandLine.Threads(), tagFile, commandLine.Paths()...)
+		execPayload(ctx, prefs, tagFile)
 	case config.CommandPrint:
-		execPayload(ctx, pushOpts, commandLine.Threads(), printFile, commandLine.Paths()...)
+		execPayload(ctx, prefs, printFile)
 	case config.CommandUntag:
-		execPayload(ctx, pushOpts, commandLine.Threads(), untagFile, commandLine.Paths()...)
+		execPayload(ctx, prefs, untagFile)
 	case config.CommandInvalidate:
-		execPayload(ctx, pushOpts, commandLine.Threads(), invalidateFile, commandLine.Paths()...)
+		execPayload(ctx, prefs, invalidateFile)
 	case config.CommandRevalidate:
-		execPayload(ctx, pushOpts, commandLine.Threads(), revalidateFile, commandLine.Paths()...)
+		execPayload(ctx, prefs, revalidateFile)
 	case config.CommandLicenses:
 		printLicenses()
 	default:
-		return fmt.Errorf("Unknown command \"%s\"", command)
+		return fmt.Errorf("Unknown command \"%s\"", prefs.Command)
 	}
 	return nil
 }
 
-// Setup default logger with dynamic leveler, return LevelVar
-func setupDefaultLogger() *slog.LevelVar {
+// Setup default logger with dynamic leveler level
+func setupDefaultLogger(level *slog.LevelVar) {
 	levelSwitch := &slog.LevelVar{} // log level LevelInfo
 	defaultLogger := slog.New(slog.NewTextHandler(os.Stderr,
 		&slog.HandlerOptions{
@@ -74,43 +70,51 @@ func setupDefaultLogger() *slog.LevelVar {
 			ReplaceAttr: logging.ReplaceLogLevelNames,
 		}))
 	slog.SetDefault(defaultLogger)
-	return levelSwitch
 }
 
 func defaultErrorHandler(ctx context.Context, err error) {
 	slog.ErrorContext(ctx, err.Error())
 }
 
-func pushOptsFromCommandLine(cmd *config.CommandLine) filesystem.PushOpts {
+func pushOptsFromPrefs(prefs *config.Preferences) filesystem.PushOpts {
 	return filesystem.PushOpts{
-		FollowSymlinks: cmd.FlagFollowSymlinks(),
-		Recursive:      !cmd.ForbidRecursion(),
+		FollowSymlinks: prefs.FollowSymlinks,
+		Recursive:      prefs.UseRecursion,
 	}
 }
 
-func execPayload(
-	ctx context.Context,
-	opts filesystem.PushOpts,
-	threads int,
-	payload func(*filesystem.Meta) error,
-	paths ...string) error {
+type payloadRuntime struct {
+	ctx   context.Context
+	eh    *logging.ErrorHandler
+	prefs *config.Preferences
+}
+
+type payloadFunc func(*payloadRuntime, *filesystem.Meta) error
+
+func execPayload(ctx context.Context, prefs *config.Preferences, payload payloadFunc) error {
 	// Setup error handler
 	eh, cancelEH := logging.NewErrorHandler(ctx, 10, defaultErrorHandler)
 	// Use closure to ensure a finished error handler
 	func() {
 		defer cancelEH()
+		// Create runtime object for payload
+		rt := &payloadRuntime{
+			ctx:   ctx,
+			eh:    eh,
+			prefs: prefs,
+		}
 		// Setup WaitGroup
 		wg := &sync.WaitGroup{}
 		// Stat files
-		metas := filesystem.PushMetas(ctx, eh, wg, opts, paths...)
+		metas := filesystem.PushMetas(ctx, eh, wg, pushOptsFromPrefs(prefs), prefs.Paths...)
 		// Setup semaphore
-		semaphore := make(chan struct{}, threads)
+		semaphore := make(chan struct{}, prefs.Threads)
 		// Run payload on files
 		for meta := range metas {
 			wg.Go(func() {
 				semaphore <- struct{}{}
 				defer func() { <-semaphore }()
-				eh.Error(payload(meta))
+				eh.Error(payload(rt, meta))
 			})
 		}
 		// Wait for payloads to finish
