@@ -54,7 +54,7 @@ func (r *commandParser) start() (*commandParserResult, error) {
 	// Start to parse
 	command, err := r.parseCommand()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse command: %s", err)
+		return nil, fmt.Errorf("Command parser failed: %s", err)
 	}
 	r.res.command = command
 	return r.res, nil
@@ -83,7 +83,7 @@ func (r *commandParser) error(expected ...string) error {
 func (r *commandParser) parseCommand() (Command, error) {
 	tok, ok := r.tok()
 	if !ok {
-		return CommandInvalid, io.EOF
+		return CommandInvalid, r.error("COMMAND")
 	}
 	command := Command(tok)
 	var err error
