@@ -15,13 +15,13 @@
 package hashes
 
 import (
-	"github.com/jwdev42/xtagger/internal/global"
+	"github.com/jwdev42/xtagger/internal/xio"
 	"hash"
 	"io"
 )
 
 func HashCopy(dst io.Writer, src io.Reader, hash hash.Hash) (written int64, err error) {
-	buf := make([]byte, global.BufSize)
+	buf := make([]byte, xio.BufSize)
 	for true {
 		r, err := src.Read(buf)
 		if r > 0 {

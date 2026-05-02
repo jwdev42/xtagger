@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"github.com/jwdev42/xtagger/internal/global"
 	"github.com/jwdev42/xtagger/internal/logging"
 	"github.com/jwdev42/xtagger/internal/program"
 	"log/slog"
@@ -27,7 +26,7 @@ func main() {
 	//Run program
 	if err := program.Run(); err != nil {
 		slog.Log(context.Background(), logging.LevelFatal, err.Error())
-		global.ExitCode = global.ExitHardError
+		os.Exit(1)
 	}
-	os.Exit(int(global.ExitCode))
+	os.Exit(0)
 }

@@ -1,4 +1,4 @@
-//This file is part of xtagger. ©2023 Jörg Walter.
+//This file is part of xtagger. ©2023-2026 Jörg Walter.
 //This program is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
@@ -12,16 +12,6 @@
 //You should have received a copy of the GNU General Public License
 //along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package global
-
-const (
-	ExitSuccess ProgramExitCode = iota
-	ExitHardError
-	ExitSoftError
-)
+package xio
 
 const BufSize = 1048576 //Default buffer size is 1 MiB
-
-type ProgramExitCode int
-
-var ExitCode ProgramExitCode = ExitSuccess

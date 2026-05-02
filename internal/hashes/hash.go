@@ -15,13 +15,13 @@
 package hashes
 
 import (
-	"github.com/jwdev42/xtagger/internal/global"
+	"github.com/jwdev42/xtagger/internal/xio"
 	"hash"
 	"io"
 )
 
 func Hash(src io.Reader, hash hash.Hash) error {
-	buf := make([]byte, global.BufSize)
+	buf := make([]byte, xio.BufSize)
 	for true {
 		r, err := src.Read(buf)
 		if r > 0 {
@@ -39,7 +39,7 @@ func Hash(src io.Reader, hash hash.Hash) error {
 }
 
 func MultiHash(src io.Reader, hashMap map[Algo]hash.Hash) error {
-	buf := make([]byte, global.BufSize)
+	buf := make([]byte, xio.BufSize)
 	var n int
 	var readErr error
 	for {
