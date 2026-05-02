@@ -1,4 +1,4 @@
-//This file is part of xtagger. ©2023 Jörg Walter.
+//This file is part of xtagger. ©2023-2026 Jörg Walter.
 //This program is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
@@ -16,7 +16,7 @@ package program
 
 import (
 	"fmt"
-	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/softerrors"
@@ -41,11 +41,11 @@ func tagFile(meta *filesystem.Meta) error {
 		return softerrors.Consume(err)
 	}
 	//Process untagged constraint
-	if constraint == cli.TagConstraintUntagged && len(attr) > 0 {
+	if constraint == config.TagConstraintUntagged && len(attr) > 0 {
 		return nil //Skip already tagged files
 	}
 	//Process invalid constraint
-	if constraint == cli.TagConstraintInvalid {
+	if constraint == config.TagConstraintInvalid {
 		for _, rec := range attr {
 			if rec.Valid {
 				//Skip files that have a valid record

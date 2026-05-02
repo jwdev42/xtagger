@@ -1,4 +1,4 @@
-//This file is part of xtagger. ©2023 Jörg Walter.
+//This file is part of xtagger. ©2023-2026 Jörg Walter.
 //This program is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
@@ -17,7 +17,7 @@ package program
 import (
 	"context"
 	"crypto/sha256"
-	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/data"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"github.com/jwdev42/xtagger/internal/xio/printer"
@@ -25,7 +25,7 @@ import (
 	"sync"
 )
 
-var commandLine *cli.CommandLine
+var commandLine *config.CommandLine
 var printMe *printer.Printer
 
 func createContext(detectProcessedFiles bool) *filesystem.Context {

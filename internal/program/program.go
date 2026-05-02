@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/logging"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"github.com/jwdev42/xtagger/internal/xio/printer"
@@ -33,7 +33,7 @@ func Run() error {
 	// Setup logger
 	dynamicLogLevel := setupDefaultLogger()
 	// Parse command line
-	commandLine, err = cli.ParseCommandLine()
+	commandLine, err = config.ParseCommandLine()
 	if err != nil {
 		return fmt.Errorf("Command line error: %s", err)
 	}
@@ -47,17 +47,17 @@ func Run() error {
 	pushOpts := pushOptsFromCommandLine(commandLine)
 	// Execute command-specific branch
 	switch command := commandLine.Command(); command {
-	case cli.CommandTag:
+	case config.CommandTag:
 		execPayload(ctx, pushOpts, commandLine.Threads(), tagFile, commandLine.Paths()...)
-	case cli.CommandPrint:
+	case config.CommandPrint:
 		execPayload(ctx, pushOpts, commandLine.Threads(), printFile, commandLine.Paths()...)
-	case cli.CommandUntag:
+	case config.CommandUntag:
 		execPayload(ctx, pushOpts, commandLine.Threads(), untagFile, commandLine.Paths()...)
-	case cli.CommandInvalidate:
+	case config.CommandInvalidate:
 		execPayload(ctx, pushOpts, commandLine.Threads(), invalidateFile, commandLine.Paths()...)
-	case cli.CommandRevalidate:
+	case config.CommandRevalidate:
 		execPayload(ctx, pushOpts, commandLine.Threads(), revalidateFile, commandLine.Paths()...)
-	case cli.CommandLicenses:
+	case config.CommandLicenses:
 		printLicenses()
 	default:
 		return fmt.Errorf("Unknown command \"%s\"", command)
@@ -81,7 +81,7 @@ func defaultErrorHandler(ctx context.Context, err error) {
 	slog.ErrorContext(ctx, err.Error())
 }
 
-func pushOptsFromCommandLine(cmd *cli.CommandLine) filesystem.PushOpts {
+func pushOptsFromCommandLine(cmd *config.CommandLine) filesystem.PushOpts {
 	return filesystem.PushOpts{
 		FollowSymlinks: cmd.FlagFollowSymlinks(),
 		Recursive:      !cmd.ForbidRecursion(),

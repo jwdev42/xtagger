@@ -1,4 +1,4 @@
-//This file is part of xtagger. ©2023 Jörg Walter.
+//This file is part of xtagger. ©2023-2026 Jörg Walter.
 //This program is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
@@ -16,7 +16,7 @@ package program
 
 import (
 	"fmt"
-	"github.com/jwdev42/xtagger/internal/cli"
+	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/softerrors"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
@@ -55,7 +55,7 @@ func printFile(meta *filesystem.Meta) error {
 
 	if len(attr) < 1 {
 		switch constraint {
-		case cli.PrintConstraintUntagged:
+		case config.PrintConstraintUntagged:
 			//Print recordless file if PrintConstraintUntagged is set
 			return softerrors.Consume(print(attr, meta.Path()))
 		}
@@ -64,9 +64,9 @@ func printFile(meta *filesystem.Meta) error {
 	}
 
 	switch constraint {
-	case cli.PrintConstraintNone:
+	case config.PrintConstraintNone:
 		return softerrors.Consume(print(attr, meta.Path())) //Print tagged file if no constraint is set
-	case cli.PrintConstraintUntagged:
+	case config.PrintConstraintUntagged:
 		return nil //Skip tagged file
 	}
 
@@ -82,12 +82,12 @@ func printFile(meta *filesystem.Meta) error {
 	}
 
 	switch constraint {
-	case cli.PrintConstraintInvalid:
+	case config.PrintConstraintInvalid:
 		//Print if all records are invalid
 		if !hasValidEntry {
 			return softerrors.Consume(print(attr, meta.Path()))
 		}
-	case cli.PrintConstraintValid:
+	case config.PrintConstraintValid:
 		//Print if all records are valid
 		if !hasInvalidEntry {
 			return softerrors.Consume(print(attr, meta.Path()))
