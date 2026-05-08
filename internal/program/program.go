@@ -85,7 +85,6 @@ func pushOptsFromPrefs(prefs *config.Preferences) filesystem.PushOpts {
 
 type payloadRuntime struct {
 	ctx   context.Context
-	eh    *logging.ErrorHandler
 	prefs *config.Preferences
 }
 
@@ -100,7 +99,6 @@ func execPayload(ctx context.Context, prefs *config.Preferences, payload payload
 		// Create runtime object for payload
 		rt := &payloadRuntime{
 			ctx:   ctx,
-			eh:    eh,
 			prefs: prefs,
 		}
 		// Setup WaitGroup
