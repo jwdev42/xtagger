@@ -32,6 +32,9 @@ type ErrorHandler struct {
 // that should be called to gracefully shut down the error processing.
 //
 // The bufsize parameter determines the capacity of the underlying error channel.
+// Calling the closeFunc will close the error channel. Therefore closeFunc must only
+// be called after all producers have finished. If you do not obey this rule,
+// a producer goroutine will panic.
 func NewErrorHandler(ctx context.Context, bufsize int, callback func(context.Context, error)) (eh *ErrorHandler, closeFunc func()) {
 	errChan := make(chan error, bufsize)
 	doneChan := make(chan struct{}) // Closed when consumer is done
@@ -44,8 +47,8 @@ func NewErrorHandler(ctx context.Context, bufsize int, callback func(context.Con
 
 	// Start consumer
 	go func() {
+		defer close(doneChan)
 		eh.listen(ctx)
-		close(doneChan)
 	}()
 
 	// Define canceler
