@@ -48,10 +48,5 @@ func untagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 			return err
 		}
 	}
-	if rt.prefs.UsePrint0 {
-		if _, err := printMe.Print0(meta.Path()); err != nil {
-			return err
-		}
-	}
 	return nil
 }

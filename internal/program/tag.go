@@ -76,11 +76,5 @@ func tagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
 	}
 	// Send info log
 	slog.Info("Tagged file", "path", meta.Path(), "checksum", rec.Checksum, "algorithm", rec.HashAlgo)
-	//Print path if print0 is active
-	if rt.prefs.UsePrint0 {
-		if _, err := printMe.Print0(meta.Path()); err != nil {
-			return err
-		}
-	}
 	return nil
 }

@@ -76,7 +76,7 @@ func (r *commandParser) tok() (string, bool) {
 
 func (r *commandParser) error(expected ...string) error {
 	tok, _ := r.tok()
-	return fmt.Errorf("[Token at index %03d] Expected %q, got %q", r.pos, strings.Join(expected, "\" or \""), tok)
+	return fmt.Errorf("[Token at index %03d] Expected %q, got %q", r.pos, expected, tok)
 }
 
 // Parse a command.

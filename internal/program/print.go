@@ -15,7 +15,6 @@
 package program
 
 import (
-	"fmt"
 	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
@@ -23,17 +22,20 @@ import (
 )
 
 func printFile(rt *payloadRuntime, meta *filesystem.Meta) error {
+	// Print prints an attribute and respects program settings
 	print := func(attr record.Attribute, path string) error {
-		if rt.prefs.UsePrint0 {
-			_, err := printMe.Print0(path)
-			return err
-		}
 		if rt.prefs.PrintRecords {
-			_, err := attr.FprintRecordsWithPath(os.Stdout, path)
-			return err
+			// Print whole record
+			res, err := attr.PrettyPrintWithPath(path)
+			if err != nil {
+				return err
+			}
+			rt.printer.Print(res)
+			return nil
 		}
-		_, err := fmt.Printf("%s\n", path)
-		return err
+		// Only print path by default
+		rt.printer.Print(path)
+		return nil
 	}
 	constraint := rt.prefs.PrintConstraint
 	//Open file

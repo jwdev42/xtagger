@@ -93,11 +93,5 @@ func reOrInvalidateFile(revalidate bool, rt *payloadRuntime, meta *filesystem.Me
 	if err := attr.FStore(f); err != nil {
 		return err
 	}
-	//Print path if print0 is active
-	if rt.prefs.UsePrint0 {
-		if _, err := printMe.Print0(meta.Path()); err != nil {
-			return err
-		}
-	}
 	return nil
 }

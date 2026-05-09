@@ -21,7 +21,6 @@ import (
 	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/logging"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
-	"github.com/jwdev42/xtagger/internal/xio/printer"
 	"log/slog"
 	"os"
 	"sync"
@@ -39,8 +38,6 @@ func Run() error {
 	if err := config.ParseCommandLine(prefs); err != nil {
 		return fmt.Errorf("Command line error: %s", err)
 	}
-	// Setup printer
-	printMe = printer.NewPrinter(os.Stdout)
 	// Execute command-specific branch
 	switch prefs.Command {
 	case config.CommandTag:
@@ -84,22 +81,32 @@ func pushOptsFromPrefs(prefs *config.Preferences) filesystem.PushOpts {
 }
 
 type payloadRuntime struct {
-	ctx   context.Context
-	prefs *config.Preferences
+	ctx     context.Context
+	prefs   *config.Preferences
+	printer *logging.Printer
 }
 
 type payloadFunc func(*payloadRuntime, *filesystem.Meta) error
 
 func execPayload(ctx context.Context, prefs *config.Preferences, payload payloadFunc) error {
+	const channelBuffer = 10
 	// Setup error handler
-	eh, cancelEH := logging.NewErrorHandler(ctx, 10, defaultErrorHandler)
-	// Use closure to ensure a finished error handler
+	eh, closeEH := logging.NewErrorHandler(ctx, channelBuffer, defaultErrorHandler)
+	// Use closure to ensure a finished error handler before examining error count
 	func() {
-		defer cancelEH()
+		defer closeEH()
+		// Setup printer
+		separator := "\n"
+		if prefs.UsePrint0 {
+			separator = "\x00"
+		}
+		printer, closePrinter := logging.NewPrinter(os.Stdout, eh, channelBuffer, separator)
+		defer closePrinter()
 		// Create runtime object for payload
 		rt := &payloadRuntime{
-			ctx:   ctx,
-			prefs: prefs,
+			ctx:     ctx,
+			prefs:   prefs,
+			printer: printer,
 		}
 		// Setup WaitGroup
 		wg := &sync.WaitGroup{}

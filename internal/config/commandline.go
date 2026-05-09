@@ -64,6 +64,7 @@ func ParseCommandLine(prefs *Preferences) error {
 	prefs.FollowSymlinks = followSymlinks
 	prefs.UsePrint0 = usePrint0
 	prefs.UseRecursion = useRecursion
+	prefs.PrintRecords = commandArgs.printRecords
 	prefs.TagConstraint = commandArgs.tagConstraint
 	prefs.PrintConstraint = commandArgs.printConstraint
 	prefs.UntagConstraint = commandArgs.untagConstraint
