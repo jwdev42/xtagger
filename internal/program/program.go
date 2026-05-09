@@ -96,11 +96,7 @@ func execPayload(ctx context.Context, prefs *config.Preferences, payload payload
 	func() {
 		defer closeEH()
 		// Setup printer
-		separator := "\n"
-		if prefs.UsePrint0 {
-			separator = "\x00"
-		}
-		printer, closePrinter := logging.NewPrinter(os.Stdout, eh, channelBuffer, separator)
+		printer, closePrinter := logging.NewPrinter(os.Stdout, eh, channelBuffer, prefs.PrintSeparator())
 		defer closePrinter()
 		// Create runtime object for payload
 		rt := &payloadRuntime{

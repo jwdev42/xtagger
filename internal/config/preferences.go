@@ -19,7 +19,7 @@ import (
 	"log/slog"
 )
 
-// Return program Preferences filled with default values
+// Return program Preferences filled with default values.
 func DefaultPreferences() *Preferences {
 	return &Preferences{
 		UseHash:      hashes.SHA256,
@@ -31,7 +31,7 @@ func DefaultPreferences() *Preferences {
 	}
 }
 
-// Preferences hold's the program configuration during runtime
+// Preferences hold's the program configuration during runtime.
 type Preferences struct {
 	Command         Command // Specified command
 	UseHash         hashes.Algo
@@ -47,6 +47,15 @@ type Preferences struct {
 	TagConstraint   TagConstraint
 	UntagConstraint UntagConstraint
 	PrintConstraint PrintConstraint
+}
+
+// Return the programs separator string for printed entities.
+// Default is \n. It will be \x00 if print0 mode is enabled.
+func (r *Preferences) PrintSeparator() string {
+	if r.UsePrint0 {
+		return "\x00"
+	}
+	return "\n"
 }
 
 // defaultLogLevel returns a LevelVar that hold's the program's
