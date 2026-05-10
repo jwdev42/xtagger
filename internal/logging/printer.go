@@ -21,19 +21,20 @@ import (
 )
 
 type Printer struct {
+	done     chan struct{}
 	wr       *bufio.Writer
 	messages chan string
 }
 
-func NewPrinter(w io.Writer, eh *ErrorHandler, bufsize int, separator string) (printer *Printer, closeFunc func()) {
-	printer = &Printer{
+func NewPrinter(w io.Writer, eh *ErrorHandler, bufsize int, separator string) *Printer {
+	printer := &Printer{
+		done:     make(chan struct{}),
 		wr:       bufio.NewWriter(w),
 		messages: make(chan string, bufsize),
 	}
-	done := make(chan struct{})
 
 	go func() {
-		defer close(done)
+		defer close(printer.done)
 		for message := range printer.messages {
 			_, err := printer.wr.WriteString(message)
 			eh.Error(err)
@@ -43,12 +44,12 @@ func NewPrinter(w io.Writer, eh *ErrorHandler, bufsize int, separator string) (p
 		eh.Error(printer.wr.Flush())
 	}()
 
-	closeFunc = func() {
-		close(printer.messages)
-		<-done
-	}
+	return printer
+}
 
-	return
+func (r *Printer) Close() {
+	close(r.messages)
+	<-r.done
 }
 
 func (r *Printer) Printf(format string, a ...any) {

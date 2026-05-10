@@ -23,41 +23,32 @@ import (
 // and passing them to a designated callback function.
 type ErrorHandler struct {
 	errChan  chan error
+	done     chan struct{}
 	counter  *atomic.Int64
 	callback func(context.Context, error)
 }
 
 // NewErrorHandler initializes a new ErrorHandler and starts a background goroutine
-// to process incoming errors. It returns the handler instance and a closure function
-// that should be called to gracefully shut down the error processing.
+// to process incoming errors.
 //
 // The bufsize parameter determines the capacity of the underlying error channel.
-// Calling the closeFunc will close the error channel. Therefore closeFunc must only
-// be called after all producers have finished. If you do not obey this rule,
-// a producer goroutine will panic.
-func NewErrorHandler(ctx context.Context, bufsize int, callback func(context.Context, error)) (eh *ErrorHandler, closeFunc func()) {
-	errChan := make(chan error, bufsize)
-	doneChan := make(chan struct{}) // Closed when consumer is done
+// Parameter callback is your error handler.
+func NewErrorHandler(ctx context.Context, bufsize int, callback func(context.Context, error)) *ErrorHandler {
 
-	eh = &ErrorHandler{
-		errChan:  errChan,
+	eh := &ErrorHandler{
+		errChan:  make(chan error, bufsize),
+		done:     make(chan struct{}),
 		counter:  &atomic.Int64{},
 		callback: callback,
 	}
 
 	// Start consumer
 	go func() {
-		defer close(doneChan)
+		defer close(eh.done)
 		eh.listen(ctx)
 	}()
 
-	// Define canceler
-	closeFunc = func() {
-		close(errChan)
-		<-doneChan
-	}
-
-	return
+	return eh
 }
 
 // listen continuously reads from the error channel and triggers the callback
@@ -66,6 +57,14 @@ func (eh *ErrorHandler) listen(ctx context.Context) {
 	for err := range eh.errChan {
 		eh.callback(ctx, err)
 	}
+}
+
+// Method Close() will close the error channel. Close() must only
+// be called after all producers have finished. If you do not obey this rule,
+// producer goroutines that are still active will panic.
+func (eh *ErrorHandler) Close() {
+	close(eh.errChan)
+	<-eh.done
 }
 
 // Error enqueues an error to be processed by the ErrorHandler.

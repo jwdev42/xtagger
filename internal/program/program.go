@@ -91,13 +91,13 @@ type payloadFunc func(*payloadRuntime, *filesystem.Meta) error
 func execPayload(ctx context.Context, prefs *config.Preferences, payload payloadFunc) error {
 	const channelBuffer = 10
 	// Setup error handler
-	eh, closeEH := logging.NewErrorHandler(ctx, channelBuffer, defaultErrorHandler)
+	eh := logging.NewErrorHandler(ctx, channelBuffer, defaultErrorHandler)
 	// Use closure to ensure a finished error handler before examining error count
 	func() {
-		defer closeEH()
+		defer eh.Close()
 		// Setup printer
-		printer, closePrinter := logging.NewPrinter(os.Stdout, eh, channelBuffer, prefs.PrintSeparator())
-		defer closePrinter()
+		printer := logging.NewPrinter(os.Stdout, eh, channelBuffer, prefs.PrintSeparator())
+		defer printer.Close()
 		// Create runtime object for payload
 		rt := &payloadRuntime{
 			ctx:     ctx,
