@@ -41,15 +41,15 @@ func Run() error {
 	// Execute command-specific branch
 	switch prefs.Command {
 	case config.CommandTag:
-		execPayload(ctx, prefs, tagFile)
+		return execPayload(ctx, prefs, tagFile)
 	case config.CommandPrint:
-		execPayload(ctx, prefs, printFile)
+		return execPayload(ctx, prefs, printFile)
 	case config.CommandUntag:
-		execPayload(ctx, prefs, untagFile)
+		return execPayload(ctx, prefs, untagFile)
 	case config.CommandInvalidate:
-		execPayload(ctx, prefs, invalidateFile)
+		return execPayload(ctx, prefs, invalidateFile)
 	case config.CommandRevalidate:
-		execPayload(ctx, prefs, revalidateFile)
+		return execPayload(ctx, prefs, revalidateFile)
 	case config.CommandLicenses:
 		printLicenses()
 	default:
