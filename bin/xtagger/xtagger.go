@@ -25,8 +25,14 @@ import (
 func main() {
 	//Run program
 	if err := program.Run(); err != nil {
+		switch err.(type) {
+		case logging.NonFatalErrors:
+			slog.Info(err.Error())
+			os.Exit(2)
+		}
 		slog.Log(context.Background(), logging.LevelFatal, err.Error())
 		os.Exit(1)
 	}
+	slog.Info("Program finished without errors")
 	os.Exit(0)
 }

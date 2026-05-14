@@ -16,7 +16,6 @@ package program
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/logging"
@@ -123,12 +122,5 @@ func execPayload(ctx context.Context, prefs *config.Preferences, payload payload
 		wg.Wait()
 	}()
 	// Examinate error count
-	errs := eh.Errors()
-	switch errs {
-	case 0:
-		return nil
-	case 1:
-		return errors.New("An error occured during command execution")
-	}
-	return fmt.Errorf("%d errors occured during command execution", errs)
+	return logging.ReportNonFatalErrors(eh.Errors())
 }
