@@ -23,15 +23,15 @@ import (
 	"os"
 )
 
-func invalidateFile(rt *payloadRuntime, meta *filesystem.Meta) error {
+func invalidateFile(rt *prt, meta *filesystem.Meta) error {
 	return reOrInvalidateFile(false, rt, meta)
 }
 
-func revalidateFile(rt *payloadRuntime, meta *filesystem.Meta) error {
+func revalidateFile(rt *prt, meta *filesystem.Meta) error {
 	return reOrInvalidateFile(true, rt, meta)
 }
 
-func reOrInvalidateFile(revalidate bool, rt *payloadRuntime, meta *filesystem.Meta) error {
+func reOrInvalidateFile(revalidate bool, rt *prt, meta *filesystem.Meta) error {
 	names := rt.prefs.Names
 	filteredRecords := func(attr record.Attribute) record.Attribute {
 		if names != nil {

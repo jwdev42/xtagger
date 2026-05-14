@@ -80,13 +80,14 @@ func pushOptsFromPrefs(prefs *config.Preferences) filesystem.PushOpts {
 	}
 }
 
-type payloadRuntime struct {
+// Program runtime object, holds stuff that needs to be widely available
+type prt struct {
 	ctx     context.Context
 	prefs   *config.Preferences
 	printer *logging.Printer
 }
 
-type payloadFunc func(*payloadRuntime, *filesystem.Meta) error
+type payloadFunc func(*prt, *filesystem.Meta) error
 
 func execPayload(ctx context.Context, prefs *config.Preferences, payload payloadFunc) error {
 	const channelBuffer = 10
@@ -99,7 +100,7 @@ func execPayload(ctx context.Context, prefs *config.Preferences, payload payload
 		printer := logging.NewPrinter(os.Stdout, eh, channelBuffer, prefs.PrintSeparator())
 		defer printer.Close()
 		// Create runtime object for payload
-		rt := &payloadRuntime{
+		rt := &prt{
 			ctx:     ctx,
 			prefs:   prefs,
 			printer: printer,

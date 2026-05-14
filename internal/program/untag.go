@@ -20,7 +20,7 @@ import (
 	"os"
 )
 
-func untagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
+func untagFile(rt *prt, meta *filesystem.Meta) error {
 	//Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {

@@ -21,7 +21,7 @@ import (
 	"os"
 )
 
-func printFile(rt *payloadRuntime, meta *filesystem.Meta) error {
+func printFile(rt *prt, meta *filesystem.Meta) error {
 	// Print prints an attribute and respects program settings
 	print := func(attr record.Attribute, path string) error {
 		if rt.prefs.PrintRecords {

@@ -24,7 +24,7 @@ import (
 	"os"
 )
 
-func tagFile(rt *payloadRuntime, meta *filesystem.Meta) error {
+func tagFile(rt *prt, meta *filesystem.Meta) error {
 	name := rt.prefs.Names[0]
 	algo := rt.prefs.UseHash
 	constraint := rt.prefs.TagConstraint
