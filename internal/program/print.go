@@ -38,20 +38,21 @@ func printFile(rt *prt, meta *filesystem.Meta) error {
 		return nil
 	}
 	constraint := rt.prefs.PrintConstraint
-	//Open file
+	// Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	//Load Attributes
+	// Load Attributes
 	attr, err := record.FLoadAttribute(f)
 	if err != nil {
 		return err
 	}
-	//Filter Attributes by name
+	// Filter Attributes by name
 	attr = attr.FilterByName(rt.prefs.Names...)
 
+	// Handle empty attributes
 	if len(attr) < 1 {
 		switch constraint {
 		case config.PrintConstraintUntagged:
@@ -62,37 +63,11 @@ func printFile(rt *prt, meta *filesystem.Meta) error {
 		return nil
 	}
 
+	// Handle nonempty attributes
 	switch constraint {
-	case config.PrintConstraintNone:
-		return print(attr, meta.Path()) //Print tagged file if no constraint is set
 	case config.PrintConstraintUntagged:
 		return nil //Skip tagged file
 	}
-
-	//Iterate through Attributes to check for invalid and valid records
-	var hasInvalidEntry bool
-	var hasValidEntry bool
-	for _, rec := range attr {
-		if !rec.Valid {
-			hasInvalidEntry = true
-		} else {
-			hasValidEntry = true
-		}
-	}
-
-	switch constraint {
-	case config.PrintConstraintInvalid:
-		//Print if all records are invalid
-		if !hasValidEntry {
-			return print(attr, meta.Path())
-		}
-	case config.PrintConstraintValid:
-		//Print if all records are valid
-		if !hasInvalidEntry {
-			return print(attr, meta.Path())
-		}
-	default:
-		panic("You're not supposed to be here")
-	}
+	return print(attr, meta.Path()) //Print tagged file by default
 	return nil
 }

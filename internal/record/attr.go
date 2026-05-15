@@ -95,7 +95,7 @@ func (r Attribute) MostRecent() (name string, rec *Record) {
 		return "", nil
 	}
 	for k, v := range r {
-		if rec == nil || v.Timestamp > rec.Timestamp {
+		if rec == nil || v.Time().After(rec.Time()) {
 			name = k
 			rec = v
 		}

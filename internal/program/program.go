@@ -45,10 +45,6 @@ func Run() error {
 		return execPayload(ctx, prefs, printFile)
 	case config.CommandUntag:
 		return execPayload(ctx, prefs, untagFile)
-	case config.CommandInvalidate:
-		return execPayload(ctx, prefs, invalidateFile)
-	case config.CommandRevalidate:
-		return execPayload(ctx, prefs, revalidateFile)
 	case config.CommandLicenses:
 		printLicenses()
 	default:

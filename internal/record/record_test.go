@@ -1,4 +1,4 @@
-//This file is part of xtagger. ©2023 Jörg Walter.
+//This file is part of xtagger. ©2023-2026 Jörg Walter.
 //This program is free software: you can redistribute it and/or modify
 //it under the terms of the GNU General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
@@ -15,12 +15,23 @@
 package record
 
 import (
+	"bytes"
+	"encoding/hex"
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/pkg/xattr"
 	"os"
 	"testing"
+	"time"
 )
+
+func mustDecodeHex(input string) []byte {
+	res, err := hex.DecodeString(input)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
 
 func testAttributeStoreAndLoad(t *testing.T, sample Attribute) error {
 	const path = "testAttributeStoreAndLoad.temp"
@@ -43,8 +54,14 @@ func testAttributeStoreAndLoad(t *testing.T, sample Attribute) error {
 		return fmt.Errorf("Attributes have different amounts of records (first: %d, second: %d)", len(sample), len(loaded))
 	}
 	for name, rec := range sample {
-		if !rec.Equals(loaded[name]) {
-			return fmt.Errorf("Records for key \"%s\" do not match:", name)
+		if !bytes.Equal(rec.checksum, loaded[name].checksum) {
+			return fmt.Errorf("Checksum mismatch on records for key %q", name)
+		}
+		if rec.hashAlgo != loaded[name].hashAlgo {
+			return fmt.Errorf("Algorithm mismatch on records for key %q", name)
+		}
+		if !rec.timestamp.Equal(loaded[name].timestamp) {
+			return fmt.Errorf("Timestamp mismatch on records for key %q", name)
 		}
 	}
 	return nil
@@ -55,55 +72,20 @@ func TestAttributeStoreAndLoad(t *testing.T) {
 		{},
 		{
 			"私はウサギです": &Record{
-				Checksum:  "368b97b0b055910d97d284f834cbf1f8d5dec95b70576c8aedf6361e6a7bbc63",
-				HashAlgo:  hashes.SHA256,
-				Timestamp: 23,
-				Valid:     false,
+				checksum:  mustDecodeHex("368b97b0b055910d97d284f834cbf1f8d5dec95b70576c8aedf6361e6a7bbc63"),
+				hashAlgo:  hashes.SHA256,
+				timestamp: time.Unix(23, 0),
 			},
 			"TestBackup123": &Record{
-				Checksum:  "1f2946e2fd7d0be6c4295c1ed828f0ff4aec21e89df898f9efbaddbe445c5c7c",
-				HashAlgo:  hashes.SHA256,
-				Timestamp: 1686676137,
-				Valid:     true,
+				checksum:  mustDecodeHex("1f2946e2fd7d0be6c4295c1ed828f0ff4aec21e89df898f9efbaddbe445c5c7c"),
+				hashAlgo:  hashes.SHA256,
+				timestamp: time.Unix(1686676137, 0),
 			},
 		},
 	}
 	for i, sample := range samples {
 		if err := testAttributeStoreAndLoad(t, sample); err != nil {
 			t.Errorf("Failed test for sample %d: %s", i, err)
-		}
-	}
-}
-
-func TestEquals(t *testing.T) {
-	//0 and 1 are equal, the others are different
-	sample := []*Record{
-		{
-			Checksum:  "368b97b0b055910d97d284f834cbf1f8d5dec95b70576c8aedf6361e6a7bbc63",
-			Timestamp: 23,
-		},
-		{
-			Checksum:  "368b97b0b055910d97d284f834cbf1f8d5dec95b70576c8aedf6361e6a7bbc63",
-			Timestamp: 23,
-		},
-		{
-			Checksum:  "1f2946e2fd7d0be6c4295c1ed828f0ff4aec21e89df898f9efbaddbe445c5c7c",
-			Timestamp: 23,
-		},
-		{
-			Checksum:  "368b97b0b055910d97d284f834cbf1f8d5dec95b70576c8aedf6361e6a7bbc63",
-			Timestamp: 24,
-		},
-	}
-	for i, rec := range sample {
-		if i < 2 {
-			if !rec.Equals(sample[0]) {
-				t.Errorf("Record at index %d was supposed to match record at index 0", i)
-			}
-		} else {
-			if rec.Equals(sample[0]) {
-				t.Errorf("Record at index %d wasn't supposed to match record at index 0", i)
-			}
 		}
 	}
 }
@@ -116,9 +98,8 @@ func TestNegativeLoadAttribute(t *testing.T) {
 		`"test"`,
 		"2",
 		`{"test":null}`,
-		`{"test":{"c":"368b97b0b055910d97d284f834cbf1f8d5dec95b70576c8aedf6361e6a7bbc63","h":"invalid","t":0,"v":false}}`,  //"h" has an illegal value
-		`{"test":{"c":"368b97b0b055910d97d284f834cbf1f8d5dec95b70576c8aedf6361e6a7bbc63","h":"SHA256","t":0,"v":"false"}}`, //"v" is string instead of bool
-		`{"test":{"c":368b97b0b055910d97d284f834cbf1f8d5dec95b70576c8aedf6361e6a7bbc63,"h":"SHA256","t":0,"v":false}}`,     //"c" is int instead of string
+		`{"test":{"c":"NouXsLBVkQ2X0oT4NMvx+NXeyVtwV2yK7fY2Hmp7vGM=","h":"invalid","t":0}}`, //"h" has an illegal value
+		`{"test":{"c":NouXsLBVkQ2X0oT4NMvx+NXeyVtwV2yK7fY2Hmp7vGM=,"h":"SHA256","t":0}}`,    //"c" is int instead of string
 		`{"test":{}}`, //Record "test" is empty
 
 	}

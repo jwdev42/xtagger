@@ -17,7 +17,6 @@ package program
 import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/config"
-	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"log/slog"
@@ -26,55 +25,39 @@ import (
 
 func tagFile(rt *prt, meta *filesystem.Meta) error {
 	name := rt.prefs.Names[0]
-	algo := rt.prefs.UseHash
 	constraint := rt.prefs.TagConstraint
-	//Open file
+	// Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	//Load attribute
+	// Load attribute
 	attr, err := record.FLoadAttribute(f)
 	if err != nil {
 		return err
 	}
-	//Process untagged constraint
+	// Process untagged constraint
 	if constraint == config.TagConstraintUntagged && len(attr) > 0 {
 		return nil //Skip already tagged files
 	}
-	//Process invalid constraint
-	if constraint == config.TagConstraintInvalid {
-		for _, rec := range attr {
-			if rec.Valid {
-				//Skip files that have a valid record
-				return nil
-			}
-		}
-	}
-	//Check if a record with the designated name already exists
+	// Check if a record with the designated name already exists
 	if attr.Exists(name) {
-		return fmt.Errorf("Record \"%s\" already exists for path %q", name, meta.Path())
+		return fmt.Errorf("Record %q already exists for path %q", name, meta.Path())
 	}
-	//Hash file
-	slog.Debug("Hashing file", "path", meta.Path())
-	hash := algo.New()
-	if err := hashes.Hash(f, hash); err != nil {
+	// Create record
+	slog.Debug("Create new tag record", "path", meta.Path())
+	rec, err := record.CreateRecord(f, rt.prefs.UseHash)
+	if err != nil {
 		return err
 	}
-	//Create record
-	slog.Debug("Create new tag record", "path", meta.Path())
-	rec := record.NewRecord()
-	rec.Checksum = fmt.Sprintf("%x", hash.Sum(nil))
-	rec.HashAlgo = algo
-	rec.Valid = true
-	//Add record to attribute
+	// Add record to attribute
 	attr[name] = rec
-	//Save attribute
+	// Save attribute
 	if err := attr.FStore(f); err != nil {
 		return err
 	}
 	// Send info log
-	slog.Info("Tagged file", "path", meta.Path(), "checksum", rec.Checksum, "algorithm", rec.HashAlgo)
+	slog.Info("Tagged file", "path", meta.Path(), "checksum", rec.Hex(), "algorithm", rec.Algo())
 	return nil
 }
