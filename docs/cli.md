@@ -28,7 +28,7 @@ If *untagged* is activated, only files that have no record yet will be tagged. I
 ##### invalid
 If *invalid* is set, only files that don't have a valid record will be tagged. If a file already has a valid record, it will be skipped.
 ### command untag
-    xbackup untag CONSTRAINT for PATHS
+    xtagger untag CONSTRAINT for PATHS
 #### tag-specific nonterminals
     CONSTRAINT := { all | invalid | NAMES [ if invalid ] }
 ##### all
@@ -44,5 +44,5 @@ Command **invalidate** marks records as invalid if the stored hash does not matc
     revalidate { all | NAMES } for PATHS
 Command **revalidate** marks invalid records as valid again if the stored hash matches the file hash.
 ### command licenses
-    xbackup licenses
+    xtagger licenses
 Command **licenses** prints license information and exits.
