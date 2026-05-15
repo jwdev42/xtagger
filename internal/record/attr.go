@@ -110,7 +110,13 @@ func (r Attribute) Exists(name string) bool {
 	return false
 }
 
+// FilterByName returns a new Attribute that contains all entries
+// from the receiver that match one of the passed names.
+// However, if name is empty or nil, the receiver will be returned.
 func (r Attribute) FilterByName(name ...string) Attribute {
+	if len(name) == 0 {
+		return r
+	}
 	attr := make(Attribute)
 	for _, key := range name {
 		if rec := r[key]; rec != nil {

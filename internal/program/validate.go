@@ -32,13 +32,6 @@ func revalidateFile(rt *prt, meta *filesystem.Meta) error {
 }
 
 func reOrInvalidateFile(revalidate bool, rt *prt, meta *filesystem.Meta) error {
-	names := rt.prefs.Names
-	filteredRecords := func(attr record.Attribute) record.Attribute {
-		if names != nil {
-			return attr.FilterByName(names...)
-		}
-		return attr
-	}
 	fillHashMap := func(attr record.Attribute) map[hashes.Algo]hash.Hash {
 		hashMap := make(map[hashes.Algo]hash.Hash)
 		for _, rec := range attr {
@@ -64,14 +57,14 @@ func reOrInvalidateFile(revalidate bool, rt *prt, meta *filesystem.Meta) error {
 	}
 	return nil
 	//Fill hashMap for MultiHash
-	hashMap := fillHashMap(filteredRecords(attr))
+	hashMap := fillHashMap(attr.FilterByName(rt.prefs.Names...))
 	//Generate hashes
 	if err := hashes.MultiHash(f, hashMap); err != nil {
 		return err
 	}
 
 	var modified bool
-	for _, rec := range filteredRecords(attr) {
+	for _, rec := range attr.FilterByName(rt.prefs.Names...) {
 		if revalidate {
 			//Revalidate outdated records
 			if fmt.Sprintf("%x", hashMap[rec.HashAlgo].Sum(nil)) == rec.Checksum {

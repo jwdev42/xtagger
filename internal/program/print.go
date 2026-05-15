@@ -50,9 +50,7 @@ func printFile(rt *prt, meta *filesystem.Meta) error {
 		return err
 	}
 	//Filter Attributes by name
-	if names := rt.prefs.Names; names != nil {
-		attr = attr.FilterByName(names...)
-	}
+	attr = attr.FilterByName(rt.prefs.Names...)
 
 	if len(attr) < 1 {
 		switch constraint {
