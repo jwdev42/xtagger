@@ -65,40 +65,35 @@ func (r *Record) Time() time.Time {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (r *Record) MarshalJSON() ([]byte, error) {
-	// Create anonymous proxy struct with Exported fields
-	proxy := struct {
-		Checksum  []byte      `json:"c"`
-		HashAlgo  hashes.Algo `json:"h"`
-		Timestamp int64       `json:"t"`
-	}{
-		Checksum:  r.checksum,
-		HashAlgo:  r.hashAlgo,
-		Timestamp: r.timestamp.Unix(),
-	}
-
-	return json.Marshal(proxy)
+	return json.Marshal(r.mRecord())
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 // Calls the receiver's internal validation function implicitly.
 func (r *Record) UnmarshalJSON(data []byte) error {
-	// Create anonymous proxy struct with Exported fields
-	proxy := struct {
-		Checksum  []byte      `json:"c"`
-		HashAlgo  hashes.Algo `json:"h"`
-		Timestamp int64       `json:"t"`
-	}{}
+	// Create proxy struct with Exported fields
+	proxy := mRecord{}
 
+	// Unmarshal into proxy
 	if err := json.Unmarshal(data, &proxy); err != nil {
 		return err
 	}
 
-	// Map proxy struct fields to unexported struct fields
-	r.checksum = proxy.Checksum
-	r.hashAlgo = proxy.HashAlgo
-	r.timestamp = time.Unix(proxy.Timestamp, 0)
+	// Update receiver with the proxy's data
+	proxy.update(r)
+
 	// Validate input
 	return r.validate()
+}
+
+// mRecord returns the corresponding mRecord for the current Record.
+// an mRecord is an internal type used for marshaling of Record structs.
+func (r *Record) mRecord() *mRecord {
+	return &mRecord{
+		Checksum:  r.checksum,
+		HashAlgo:  r.hashAlgo,
+		Timestamp: r.timestamp.Unix(),
+	}
 }
 
 func (r *Record) validate() error {
