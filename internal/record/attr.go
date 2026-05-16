@@ -22,7 +22,8 @@ import (
 	"os"
 )
 
-// Represents the whole content of a user.xtagger xattr entry
+// Attribute represents a user.xtagger xattr entry. It's purpose is to
+// retrieve, manipulate and write xtagger xattr entries.
 type Attribute map[string]*Record
 
 // Loads the xtagger extended attribute for path.
@@ -73,16 +74,16 @@ func (r Attribute) FStore(f *os.File) error {
 	if r == nil {
 		panic("BUG: Calling Store() with a nil receiver is prohibited")
 	}
-	//Validation
+	// Validation
 	if err := r.validate(); err != nil {
 		return err
 	}
-	//Encode JSON
+	// Encode JSON
 	payload, err := json.Marshal(r)
 	if err != nil {
 		return fmt.Errorf("Failed to encode json: %s", err)
 	}
-	//Write extended attribute
+	// Write extended attribute
 	if err := xattr.FSet(f, attrName, payload); err != nil {
 		return fmt.Errorf("Failed to write extended attribute: %s", err)
 	}
@@ -103,6 +104,7 @@ func (r Attribute) MostRecent() (name string, rec *Record) {
 	return name, rec
 }
 
+// Exists returns true if the receiver holds a record that matches name.
 func (r Attribute) Exists(name string) bool {
 	if r[name] != nil {
 		return true
@@ -126,19 +128,12 @@ func (r Attribute) FilterByName(name ...string) Attribute {
 	return attr
 }
 
-func (r Attribute) PrettyPrintWithPath(path string) (string, error) {
-	container := struct {
-		Path    string
-		Records Attribute
-	}{
-		Path:    path,
-		Records: r,
+func (r Attribute) Prettify() (pretty PrettyAttribute) {
+	pretty = make(PrettyAttribute)
+	for k, v := range r {
+		pretty[k] = v.Prettify()
 	}
-	res, err := json.MarshalIndent(&container, "", "\t")
-	if err != nil {
-		return "", err
-	}
-	return string(res), nil
+	return
 }
 
 func (r Attribute) validate() error {

@@ -63,6 +63,15 @@ func (r *Record) Time() time.Time {
 	return r.timestamp
 }
 
+// Prettify builds a PrettyRecord using the receiver's data.
+func (r *Record) Prettify() *PrettyRecord {
+	return &PrettyRecord{
+		Checksum:  r.Hex(),
+		Algorithm: r.hashAlgo,
+		Timestamp: r.timestamp,
+	}
+}
+
 // MarshalJSON implements the json.Marshaler interface.
 func (r *Record) MarshalJSON() ([]byte, error) {
 	return json.Marshal(r.mRecord())

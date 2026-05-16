@@ -3,6 +3,7 @@ module github.com/jwdev42/xtagger
 go 1.25.0
 
 require (
+	github.com/pelletier/go-toml/v2 v2.3.1
 	github.com/pkg/xattr v0.4.12
 	golang.org/x/crypto v0.50.0
 )

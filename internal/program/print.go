@@ -19,18 +19,20 @@ import (
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/xio/filesystem"
 	"os"
+	"strings"
 )
 
 func printFile(rt *prt, meta *filesystem.Meta) error {
+	builder := &strings.Builder{} // Used by the print function
 	// Print prints an attribute and respects program settings
 	print := func(attr record.Attribute, path string) error {
 		if rt.prefs.PrintRecords {
+			builder.Reset()
 			// Print whole record
-			res, err := attr.PrettyPrintWithPath(path)
-			if err != nil {
+			if err := attr.Prettify().TomlWithPath(builder, path); err != nil {
 				return err
 			}
-			rt.printer.Print(res)
+			rt.printer.Print(builder.String())
 			return nil
 		}
 		// Only print path by default
