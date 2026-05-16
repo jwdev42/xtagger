@@ -27,24 +27,17 @@ func untagFile(rt *prt, meta *filesystem.Meta) error {
 		return err
 	}
 	defer f.Close()
-	if len(rt.prefs.Names) > 0 {
-		attr, err := record.FLoadAttribute(f)
-		if err != nil {
-			return err
-		}
-		initialLength := len(attr)
-		for _, name := range rt.prefs.Names {
-			delete(attr, name)
-		}
-		if initialLength == len(attr) {
-			//Return if attr didn't change
-			return nil
-		}
+	if len(rt.prefs.Names) == 0 {
+		// Remove whole xattr record
+		return record.PurgeAttr(f)
+	}
+	// Remove named entries
+	attr, err := record.FLoadAttribute(f)
+	if err != nil {
+		return err
+	}
+	if attr.DeleteRecord(rt.prefs.Names...) {
 		if err := attr.FStore(f); err != nil {
-			return err
-		}
-	} else {
-		if err := record.PurgeAttr(f); err != nil {
 			return err
 		}
 	}

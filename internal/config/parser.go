@@ -173,7 +173,7 @@ func (r *commandParser) parseCommandPrint() error {
 func (r *commandParser) parseCommandUntag() error {
 	// parse optional names
 	if r.isLiteral(litName) {
-		if err := r.parseName(); err != nil {
+		if err := r.parseNames(); err != nil {
 			return fmt.Errorf("Failed to parse names: %s", err)
 		}
 	}
@@ -224,6 +224,7 @@ func (r *commandParser) parsePath() error {
 	return nil
 }
 
+// parseNames parses record names.
 func (r *commandParser) parseNames() error {
 	if err := r.parseLiteral(litName); err != nil {
 		return err
@@ -240,6 +241,8 @@ func (r *commandParser) parseNames() error {
 	return r.parseNames()
 }
 
+// parseName parses a name expression, this function must only be called
+// by parseNames(). Use parseNames() to parse record names!
 func (r *commandParser) parseName() error {
 	//Closure for name validation
 	validateName := func(name string) error {

@@ -71,8 +71,9 @@ func (r Attribute) Store(path string) error {
 
 // Stores the xtagger extended attribute in File's inode.
 func (r Attribute) FStore(f *os.File) error {
-	if r == nil {
-		panic("BUG: Calling Store() with a nil receiver is prohibited")
+	// Purge xattr record if Attribute has no entries
+	if len(r) == 0 {
+		return PurgeAttr(f)
 	}
 	// Validation
 	if err := r.validate(); err != nil {
@@ -88,6 +89,16 @@ func (r Attribute) FStore(f *os.File) error {
 		return fmt.Errorf("Failed to write extended attribute: %s", err)
 	}
 	return nil
+}
+
+// DeleteRecord deletes Records from Attribute by Name.
+// Returns true if at least one Record was deleted.
+func (r Attribute) DeleteRecord(name ...string) bool {
+	before := len(r)
+	for _, n := range name {
+		delete(r, n)
+	}
+	return len(r) < before
 }
 
 // Returns the newest Record. Returns zero-values if no record was found.
