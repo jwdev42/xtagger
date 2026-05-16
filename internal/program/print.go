@@ -39,7 +39,6 @@ func printFile(rt *prt, meta *filesystem.Meta) error {
 		rt.printer.Print(path)
 		return nil
 	}
-	constraint := rt.prefs.PrintConstraint
 	// Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
@@ -56,8 +55,7 @@ func printFile(rt *prt, meta *filesystem.Meta) error {
 
 	// Handle empty attributes
 	if len(attr) < 1 {
-		switch constraint {
-		case config.PrintConstraintUntagged:
+		if rt.prefs.Constraints.Has(config.ConstraintUntagged) {
 			//Print recordless file if PrintConstraintUntagged is set
 			return print(attr, meta.Path())
 		}
@@ -66,10 +64,8 @@ func printFile(rt *prt, meta *filesystem.Meta) error {
 	}
 
 	// Handle nonempty attributes
-	switch constraint {
-	case config.PrintConstraintUntagged:
+	if rt.prefs.Constraints.Has(config.ConstraintUntagged) {
 		return nil //Skip tagged file
 	}
 	return print(attr, meta.Path()) //Print tagged file by default
-	return nil
 }

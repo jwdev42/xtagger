@@ -25,7 +25,6 @@ import (
 
 func tagFile(rt *prt, meta *filesystem.Meta) error {
 	name := rt.prefs.Names[0]
-	constraint := rt.prefs.TagConstraint
 	// Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {
@@ -38,7 +37,7 @@ func tagFile(rt *prt, meta *filesystem.Meta) error {
 		return err
 	}
 	// Process untagged constraint
-	if constraint == config.TagConstraintUntagged && len(attr) > 0 {
+	if rt.prefs.Constraints.Has(config.ConstraintUntagged) && len(attr) > 0 {
 		return nil //Skip already tagged files
 	}
 	// Check if a record with the designated name already exists

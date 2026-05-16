@@ -28,25 +28,24 @@ func DefaultPreferences() *Preferences {
 		LogLevel:     defaultLogLevel(),
 		Threads:      1,
 		UseRecursion: true,
+		Constraints:  &Constraints{},
 	}
 }
 
 // Preferences hold's the program configuration during runtime.
 type Preferences struct {
-	Command         Command // Specified command
-	UseHash         hashes.Algo
-	Paths           []string       // User-specified directories and files
-	Names           []string       // User-specified record identifiers
-	LogLevel        *slog.LevelVar // Currently active log level
-	Quota           int64
-	Threads         int
-	FollowSymlinks  bool
-	PrintRecords    bool
-	UsePrint0       bool
-	UseRecursion    bool
-	TagConstraint   TagConstraint
-	UntagConstraint UntagConstraint
-	PrintConstraint PrintConstraint
+	Command        Command // Specified command
+	UseHash        hashes.Algo
+	Paths          []string       // User-specified directories and files
+	Names          []string       // User-specified record identifiers
+	LogLevel       *slog.LevelVar // Currently active log level
+	Quota          int64
+	Threads        int
+	FollowSymlinks bool
+	PrintRecords   bool
+	UsePrint0      bool
+	UseRecursion   bool
+	Constraints    *Constraints
 }
 
 // Return the programs separator string for printed entities.

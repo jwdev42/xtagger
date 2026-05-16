@@ -15,13 +15,11 @@
 package config
 
 const (
-	CommandInvalid    Command = ""
-	CommandPrint              = "print"
-	CommandTag                = "tag"
-	CommandUntag              = "untag"
-	CommandInvalidate         = "invalidate"
-	CommandRevalidate         = "revalidate"
-	CommandLicenses           = "licenses"
+	CommandInvalid  Command = ""
+	CommandPrint            = "print"
+	CommandTag              = "tag"
+	CommandUntag            = "untag"
+	CommandLicenses         = "licenses"
 )
 
 type Command string

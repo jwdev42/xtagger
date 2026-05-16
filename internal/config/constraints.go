@@ -14,25 +14,34 @@
 
 package config
 
-const (
-	TagConstraintNone TagConstraint = iota
-	TagConstraintUntagged
-	TagConstraintInvalid
-)
+const ConstraintNone Constraint = 0 // No constraints
 
 const (
-	PrintConstraintNone PrintConstraint = iota
-	PrintConstraintValid
-	PrintConstraintInvalid
-	PrintConstraintUntagged
+	ConstraintUntagged Constraint = 1 << iota // Only process files without user.xtagger xattr entry
 )
 
-const (
-	UntagConstraintNone UntagConstraint = iota
-	UntagConstraintAll
-	UntagConstraintInvalid
-)
+type Constraint uint64
 
-type TagConstraint int
-type UntagConstraint int
-type PrintConstraint int
+type Constraints struct {
+	storage Constraint
+}
+
+func (cs *Constraints) Add(c Constraint) {
+	cs.storage |= c
+}
+
+func (cs *Constraints) Has(c Constraint) bool {
+	return cs.storage&c != 0
+}
+
+func (cs *Constraints) Remove(c Constraint) {
+	cs.storage &^= c
+}
+
+func (cs *Constraints) Toggle(c Constraint) {
+	cs.storage ^= c
+}
+
+func (cs *Constraints) Union(c Constraints) {
+	cs.Add(c.storage)
+}

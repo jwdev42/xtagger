@@ -22,15 +22,26 @@ import (
 	"unicode"
 )
 
+// commandParser literals
+const (
+	litAnd      = "and"
+	litAs       = "as"
+	litBy       = "by"
+	litEOF      = "EOF"
+	litFor      = "for"
+	litName     = "name"
+	litNone     = "none"
+	litRecords  = "records"
+	litUntagged = "untagged"
+)
+
 // commandParserResult holds a parsed command
 type commandParserResult struct {
-	command         Command         // Application command
-	paths           []string        // Paths to process
-	names           []string        // Record names to consider
-	printRecords    bool            // Flag for CommandPrint that controls if records are being printed
-	tagConstraint   TagConstraint   // Constraint for command CommandTag
-	printConstraint PrintConstraint // Constraint for command CommandPrint
-	untagConstraint UntagConstraint // Constraint for command CommandUntag
+	command      Command     // Application command
+	paths        []string    // Paths to process
+	names        []string    // Record names to consider
+	printRecords bool        // Flag for CommandPrint that controls if records are being printed
+	constraints  Constraints // Command constraints
 }
 
 // CLI command parser.
@@ -71,7 +82,7 @@ func (r *commandParser) tok() (string, bool) {
 	if len(r.tokens) > r.pos {
 		return r.tokens[r.pos], true
 	}
-	return "EOF", false
+	return litEOF, false
 }
 
 func (r *commandParser) error(expected ...string) error {
@@ -97,9 +108,6 @@ func (r *commandParser) parseCommand() (Command, error) {
 	case CommandUntag:
 		r.adv()
 		err = r.parseCommandUntag()
-	case CommandInvalidate, CommandRevalidate:
-		r.adv()
-		err = r.parseCommandInvalidateOrRevalidate()
 	case CommandLicenses:
 		r.adv()
 		err = r.parseCommandLicense()
@@ -114,12 +122,12 @@ func (r *commandParser) parseCommand() (Command, error) {
 
 func (r *commandParser) parseCommandTag() error {
 	//parse "as"
-	if err := r.parseLiteral("as"); err != nil {
+	if err := r.parseLiteral(litAs); err != nil {
 		//if "as" is not found, parse tag constraint, then "as"
 		if err := r.parseTagConstraint(); err != nil {
 			return err
 		}
-		if err := r.parseLiteral("as"); err != nil {
+		if err := r.parseLiteral(litAs); err != nil {
 			return err
 		}
 	}
@@ -128,7 +136,7 @@ func (r *commandParser) parseCommandTag() error {
 		return err
 	}
 	//Parse "for"
-	if err := r.parseLiteral("for"); err != nil {
+	if err := r.parseLiteral(litFor); err != nil {
 		return err
 	}
 	//Parse path(s)
@@ -136,28 +144,26 @@ func (r *commandParser) parseCommandTag() error {
 }
 
 func (r *commandParser) parseCommandPrint() error {
-	if err := r.parseLiteral("untagged"); err == nil {
+	if err := r.parseLiteral(litUntagged); err == nil {
 		//Parse "for" after "untagged"
-		if err := r.parseLiteral("for"); err != nil {
+		if err := r.parseLiteral(litFor); err != nil {
 			return err
 		}
 		//Parse PATHS
 		return r.parsePathsUntilEOF()
 	}
-	//Parse optional CONSTRAINT, return value can therefore be ignored
-	r.parsePrintConstraint()
 	//Parse optional literal "records"
-	if err := r.parseLiteral("records"); err == nil {
+	if err := r.parseLiteral(litRecords); err == nil {
 		r.res.printRecords = true
 	}
 	//Parse optional "by" + NAMES
-	if err := r.parseLiteral("by"); err == nil {
+	if err := r.parseLiteral(litBy); err == nil {
 		if err := r.parseNames(); err != nil {
 			return err
 		}
 	}
 	//Parse "for"
-	if err := r.parseLiteral("for"); err != nil {
+	if err := r.parseLiteral(litFor); err != nil {
 		return err
 	}
 	//Parse PATHS
@@ -165,31 +171,17 @@ func (r *commandParser) parseCommandPrint() error {
 }
 
 func (r *commandParser) parseCommandUntag() error {
-	//Parse mandatory CONSTRAINT
-	if err := r.parseUntagConstraint(); err != nil {
-		return err
-	}
-	//parse "for"
-	if err := r.parseLiteral("for"); err != nil {
-		return err
-	}
-	//parse PATHS
-	return r.parsePathsUntilEOF()
-}
-
-func (r *commandParser) parseCommandInvalidateOrRevalidate() error {
-	//parse "all"
-	if err := r.parseLiteral("all"); err != nil {
-		//parse NAMES if token is not "all"
-		if err := r.parseNames(); err != nil {
-			return err
+	// parse optional names
+	if r.isLiteral(litName) {
+		if err := r.parseName(); err != nil {
+			return fmt.Errorf("Failed to parse names: %s", err)
 		}
 	}
-	//parse "for"
-	if err := r.parseLiteral("for"); err != nil {
+	// parse "for"
+	if err := r.parseLiteral(litFor); err != nil {
 		return err
 	}
-	//parse PATHS
+	// parse PATHS
 	return r.parsePathsUntilEOF()
 }
 
@@ -199,7 +191,7 @@ func (r *commandParser) parseCommandLicense() error {
 	if !ok {
 		return nil
 	}
-	return r.error(io.EOF.Error())
+	return r.error(litEOF)
 }
 
 func (r *commandParser) parseTagConstraint() error {
@@ -208,64 +200,13 @@ func (r *commandParser) parseTagConstraint() error {
 		return io.EOF
 	}
 	switch tok {
-	case "untagged":
-		r.res.tagConstraint = TagConstraintUntagged
-	case "invalid":
-		r.res.tagConstraint = TagConstraintInvalid
+	case litNone:
+	case litUntagged:
+		r.res.constraints.Add(ConstraintUntagged)
 	default:
-		return r.error("untagged", "invalid")
+		return r.error(litNone, litUntagged)
 	}
 	r.adv()
-	return nil
-}
-
-func (r *commandParser) parsePrintConstraint() error {
-	tok, ok := r.tok()
-	if !ok {
-		return r.error("invalid", "valid")
-	}
-	switch tok {
-	case "invalid":
-		r.res.printConstraint = PrintConstraintInvalid
-	case "valid":
-		r.res.printConstraint = PrintConstraintValid
-	default:
-		return r.error("invalid", "valid")
-	}
-	r.adv()
-	return nil
-}
-
-func (r *commandParser) parseUntagConstraint() error {
-	tok, ok := r.tok()
-	if !ok {
-		return io.EOF
-	}
-	switch tok {
-	case "all":
-		r.res.untagConstraint = UntagConstraintAll
-	case "invalid":
-		r.res.untagConstraint = UntagConstraintInvalid
-	default:
-		return r.parseUntagNamesConstraint()
-	}
-	r.adv()
-	return nil
-}
-
-func (r *commandParser) parseUntagNamesConstraint() error {
-	if err := r.parseNames(); err != nil {
-		return err
-	}
-	//parse optional "if invalid"
-	if err := r.parseLiteral("if"); err != nil {
-		return nil
-	}
-	if err := r.parseLiteral("invalid"); err != nil {
-		return err
-	}
-	//Set UntagConstraintInvalid after parsing "if invalid"
-	r.res.untagConstraint = UntagConstraintInvalid
 	return nil
 }
 
@@ -284,14 +225,14 @@ func (r *commandParser) parsePath() error {
 }
 
 func (r *commandParser) parseNames() error {
-	if err := r.parseLiteral("name"); err != nil {
+	if err := r.parseLiteral(litName); err != nil {
 		return err
 	}
 	if err := r.parseName(); err != nil {
 		return err
 	}
 	//parse optional "and"
-	if err := r.parseLiteral("and"); err != nil {
+	if err := r.parseLiteral(litAnd); err != nil {
 		//done if token is not "and"
 		return nil
 	}
@@ -334,6 +275,16 @@ func (r *commandParser) parseName() error {
 	return nil
 }
 
+// isLiteral returns true if the current token matches parameter literal.
+func (r *commandParser) isLiteral(literal string) bool {
+	tok, _ := r.tok()
+	return tok == literal
+}
+
+// parseLiteral consumes the current token if it matches argument literal,
+// then returns nil.
+// If the current token does not match literal, an error will be returned
+// and the token stream will not be advanced.
 func (r *commandParser) parseLiteral(literal string) error {
 	tok, ok := r.tok()
 	if !ok {
