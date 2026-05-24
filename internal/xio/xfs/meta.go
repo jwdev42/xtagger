@@ -76,10 +76,10 @@ func Lstat(path string) (*Meta, error) {
 
 // PushMetas is a producer, it starts a goroutine that stats files and
 // pushes the corresponding *Meta objects to the returned channel.
-// Channel errs exists for returning errors to the error consumer.
-// Variable start is the entry path for the stat operation.
-// Variable opts controls options like recursion into subdirs and
-// symlink behaviour.
+// Entry point for the stat process will be each element of parameter root.
+// PushMetas will close the returned channel after every file for every
+// tree of every root element was stated.
+// Parameter eh must be an initialized ErrorHandler.
 // IMPORTANT: The caller (consumer) is responsible for draining the
 // returned channel to prevent a goroutine leak.
 func PushMetas(ctx context.Context, eh *logging.ErrorHandler, wg *sync.WaitGroup, opts PushOpts, root ...string) <-chan *Meta {
