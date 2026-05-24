@@ -18,12 +18,12 @@ import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/record"
-	"github.com/jwdev42/xtagger/internal/xio/filesystem"
+	"github.com/jwdev42/xtagger/internal/xio/xfs"
 	"log/slog"
 	"os"
 )
 
-func tagFile(rt *prt, meta *filesystem.Meta) error {
+func tagFile(rt *prt, meta *xfs.Meta) error {
 	name := rt.prefs.Names[0]
 	// Open file
 	f, err := os.Open(meta.Path())

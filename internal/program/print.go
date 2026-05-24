@@ -17,12 +17,12 @@ package program
 import (
 	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/record"
-	"github.com/jwdev42/xtagger/internal/xio/filesystem"
+	"github.com/jwdev42/xtagger/internal/xio/xfs"
 	"os"
 	"strings"
 )
 
-func printFile(rt *prt, meta *filesystem.Meta) error {
+func printFile(rt *prt, meta *xfs.Meta) error {
 	builder := &strings.Builder{} // Used by the print function
 	// Print prints an attribute and respects program settings
 	print := func(attr record.Attribute, path string) error {

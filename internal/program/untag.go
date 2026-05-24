@@ -16,11 +16,11 @@ package program
 
 import (
 	"github.com/jwdev42/xtagger/internal/record"
-	"github.com/jwdev42/xtagger/internal/xio/filesystem"
+	"github.com/jwdev42/xtagger/internal/xio/xfs"
 	"os"
 )
 
-func untagFile(rt *prt, meta *filesystem.Meta) error {
+func untagFile(rt *prt, meta *xfs.Meta) error {
 	//Open file
 	f, err := os.Open(meta.Path())
 	if err != nil {

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/logging"
-	"github.com/jwdev42/xtagger/internal/xio/filesystem"
+	"github.com/jwdev42/xtagger/internal/xio/xfs"
 	"log/slog"
 	"os"
 	"sync"
@@ -68,8 +68,8 @@ func defaultErrorHandler(ctx context.Context, err error) {
 	slog.ErrorContext(ctx, err.Error())
 }
 
-func pushOptsFromPrefs(prefs *config.Preferences) filesystem.PushOpts {
-	return filesystem.PushOpts{
+func pushOptsFromPrefs(prefs *config.Preferences) xfs.PushOpts {
+	return xfs.PushOpts{
 		FollowSymlinks: prefs.FollowSymlinks,
 		Recursive:      prefs.UseRecursion,
 	}
@@ -82,7 +82,7 @@ type prt struct {
 	printer *logging.Printer
 }
 
-type payloadFunc func(*prt, *filesystem.Meta) error
+type payloadFunc func(*prt, *xfs.Meta) error
 
 func execPayload(ctx context.Context, prefs *config.Preferences, payload payloadFunc) error {
 	const channelBuffer = 10
@@ -103,7 +103,7 @@ func execPayload(ctx context.Context, prefs *config.Preferences, payload payload
 		// Setup WaitGroup
 		wg := &sync.WaitGroup{}
 		// Stat files
-		metas := filesystem.PushMetas(ctx, eh, wg, pushOptsFromPrefs(prefs), prefs.Paths...)
+		metas := xfs.PushMetas(ctx, eh, wg, pushOptsFromPrefs(prefs), prefs.Paths...)
 		// Setup semaphore
 		semaphore := make(chan struct{}, prefs.Threads)
 		// Run payload on files
