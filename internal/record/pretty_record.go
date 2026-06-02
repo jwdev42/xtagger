@@ -32,6 +32,7 @@ type NamedPrettyRecord struct {
 	PrettyRecord
 }
 
+// WithName returns a NamedPrettyRecord using the receiver's data.
 func (pr PrettyRecord) WithName(name string) NamedPrettyRecord {
 	return NamedPrettyRecord{
 		Name:         name,

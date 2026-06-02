@@ -19,6 +19,7 @@ const (
 	CommandPrint            = "print"
 	CommandTag              = "tag"
 	CommandUntag            = "untag"
+	CommandVerify           = "verify"
 	CommandLicenses         = "licenses"
 )
 

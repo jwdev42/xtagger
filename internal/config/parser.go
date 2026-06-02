@@ -108,6 +108,9 @@ func (r *commandParser) parseCommand() (Command, error) {
 	case CommandUntag:
 		r.adv()
 		err = r.parseCommandUntag()
+	case CommandVerify:
+		r.adv()
+		err = r.parseCommandVerify()
 	case CommandLicenses:
 		r.adv()
 		err = r.parseCommandLicense()
@@ -182,6 +185,21 @@ func (r *commandParser) parseCommandUntag() error {
 		return err
 	}
 	// parse PATHS
+	return r.parsePathsUntilEOF()
+}
+
+func (r *commandParser) parseCommandVerify() error {
+	//Parse optional "by" + NAMES
+	if err := r.parseLiteral(litBy); err == nil {
+		if err := r.parseNames(); err != nil {
+			return err
+		}
+	}
+	//Parse "for"
+	if err := r.parseLiteral(litFor); err != nil {
+		return err
+	}
+	//Parse PATHS
 	return r.parsePathsUntilEOF()
 }
 

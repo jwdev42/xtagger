@@ -1,16 +1,16 @@
-//This file is part of xtagger. ©2023 Jörg Walter.
-//This program is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
-//the Free Software Foundation, either version 3 of the License, or
-//(at your option) any later version.
+// This file is part of xtagger. ©2023-2026 Jörg Walter.
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-//This program is distributed in the hope that it will be useful,
-//but WITHOUT ANY WARRANTY; without even the implied warranty of
-//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 //
-//You should have received a copy of the GNU General Public License
-//along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package record
 
@@ -18,8 +18,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jwdev42/xtagger/internal/hashes"
 	"github.com/pkg/xattr"
+	"hash"
 	"os"
+	"time"
 )
 
 // Attribute represents a user.xtagger xattr entry. It's purpose is to
@@ -145,6 +148,33 @@ func (r Attribute) Prettify() (pretty PrettyAttribute) {
 		pretty[k] = v.Prettify()
 	}
 	return
+}
+
+// Update recalculates the file hash, then returns a new Attribute that
+// holds a new revision of every record of the receiver,
+// with updated hashes and time stamps.
+// Update is useful for verification of an older Attribute.
+func (r Attribute) Update(f *os.File) (Attribute, error) {
+	hm := r.algos()
+	if err := hashes.MultiHash(f, hm); err != nil {
+		return nil, err
+	}
+	ts := time.Now()
+	updated := make(Attribute)
+	for name, rec := range r {
+		updated[name] = newRecord(rec.hashAlgo, hm[rec.hashAlgo], ts)
+	}
+	return updated, nil
+}
+
+// Algos returns a map of fresh Hash interfaces for every hashing algorithm
+// used in the Attribute.
+func (r Attribute) algos() map[hashes.Algo]hash.Hash {
+	hm := make(map[hashes.Algo]hash.Hash)
+	for _, rec := range r {
+		hm[rec.hashAlgo] = rec.hashAlgo.New()
+	}
+	return hm
 }
 
 func (r Attribute) validate() error {

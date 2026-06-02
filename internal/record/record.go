@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jwdev42/xtagger/internal/hashes"
+	"hash"
 	"io"
 	"time"
 )
@@ -37,15 +38,19 @@ type Record struct {
 // stores the result in a new Record,
 // then returns a pointer to that Record.
 func CreateRecord(src io.Reader, algo hashes.Algo) (*Record, error) {
-	hash := algo.New()
-	if err := hashes.Hash(src, hash); err != nil {
+	checksum := algo.New()
+	if err := hashes.Hash(src, checksum); err != nil {
 		return nil, err
 	}
+	return newRecord(algo, checksum, time.Now()), nil
+}
+
+func newRecord(algo hashes.Algo, checksum hash.Hash, ts time.Time) *Record {
 	return &Record{
-		checksum:  hash.Sum(nil),
+		checksum:  checksum.Sum(nil),
 		hashAlgo:  algo,
-		timestamp: time.Now(),
-	}, nil
+		timestamp: ts,
+	}
 }
 
 // Algo returns the Record's hashing algorithm.
@@ -64,8 +69,8 @@ func (r *Record) Time() time.Time {
 }
 
 // Prettify builds a PrettyRecord using the receiver's data.
-func (r *Record) Prettify() *PrettyRecord {
-	return &PrettyRecord{
+func (r *Record) Prettify() PrettyRecord {
+	return PrettyRecord{
 		Checksum:  r.Hex(),
 		Algorithm: r.hashAlgo,
 		Timestamp: r.timestamp,
