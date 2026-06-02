@@ -15,24 +15,24 @@
 package program
 
 import (
+	"encoding/json"
 	"github.com/jwdev42/xtagger/internal/config"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/xio/xfs"
 	"os"
-	"strings"
 )
 
 func printFile(rt *prt, meta *xfs.Meta) error {
-	builder := &strings.Builder{} // Used by the print function
 	// Print prints an attribute and respects program settings
 	print := func(attr record.Attribute, path string) error {
 		if rt.prefs.PrintRecords {
-			builder.Reset()
 			// Print whole record
-			if err := attr.Prettify().TomlWithPath(builder, path); err != nil {
+			prettyAttr := attr.Prettify(path)
+			data, err := json.Marshal(&prettyAttr)
+			if err != nil {
 				return err
 			}
-			rt.printer.Print(builder.String())
+			rt.printer.Print(string(data))
 			return nil
 		}
 		// Only print path by default

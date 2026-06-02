@@ -16,8 +16,6 @@ package record
 
 import (
 	"errors"
-	toml "github.com/pelletier/go-toml/v2"
-	"io"
 	"time"
 )
 
@@ -31,11 +29,11 @@ const (
 type RCState string // Record comparison state
 
 type RecordVerification struct {
-	Result       RCState       `toml:"result"`              // Verification result.
-	Interval     time.Duration `toml:"interval"`            // Time interval between original record and verification.
-	Error        error         `toml:"error,omitempty"`     // Optional error message. Non-nil if Result is not RCStateOK.
-	Original     PrettyRecord  `toml:"original_record"`     // Original record data.
-	Verification PrettyRecord  `toml:"verification_record"` // Verification record data.
+	Result       RCState       `json:"result"`              // Verification result.
+	Interval     time.Duration `json:"interval"`            // Time interval between original record and verification.
+	Error        error         `json:"error,omitempty"`     // Optional error message. Non-nil if Result is not RCStateOK.
+	Original     PrettyRecord  `json:"original_record"`     // Original record data.
+	Verification PrettyRecord  `json:"verification_record"` // Verification record data.
 }
 
 func VerifyRecord(orig, ver PrettyRecord) RecordVerification {
@@ -57,20 +55,18 @@ func VerifyRecord(orig, ver PrettyRecord) RecordVerification {
 	return res
 }
 
-type AttributeVerification map[string]RecordVerification
-
-func VerifyAttribute(orig, ver PrettyAttribute) AttributeVerification {
-	res := make(AttributeVerification)
-	for name, rec := range orig {
-		res[name] = VerifyRecord(rec, ver[name])
-	}
-	return res
+type AttributeVerification struct {
+	Path    string                        `json:"path"`    // File path.
+	Records map[string]RecordVerification `json:"records"` // File's record verifications.
 }
 
-// TomlWithPath writes path and AttributeVerification as a toml entry to the writer.
-func (r AttributeVerification) TomlWithPath(wr io.Writer, path string) error {
-	container := make(map[string]AttributeVerification)
-	container[path] = r
-	enc := toml.NewEncoder(wr)
-	return enc.Encode(container)
+func VerifyAttribute(orig, ver PrettyAttribute) AttributeVerification {
+	records := make(map[string]RecordVerification)
+	for name, rec := range orig.Records {
+		records[name] = VerifyRecord(rec, ver.Records[name])
+	}
+	return AttributeVerification{
+		Path:    orig.Path,
+		Records: records,
+	}
 }

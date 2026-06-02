@@ -21,21 +21,14 @@ import (
 
 // PrettyRecord represents a single record within a user.xtagger entry
 type PrettyRecord struct {
-	Checksum  string      `toml:"checksum"`  // Hex encoded hash.
-	Algorithm hashes.Algo `toml:"algorithm"` // Name of the hashing algorithm.
-	Timestamp time.Time   `toml:"timestamp"` // Timestamp of hashing operation.
+	Checksum  string      `json:"checksum"`  // Hex encoded hash.
+	Algorithm hashes.Algo `json:"algorithm"` // Name of the hashing algorithm.
+	Timestamp time.Time   `json:"timestamp"` // Timestamp of hashing operation.
 }
 
-// NamedPrettyRecord is like PrettyRecord, but with an additional Name field.
-type NamedPrettyRecord struct {
-	Name string `toml:"name"`
-	PrettyRecord
-}
-
-// WithName returns a NamedPrettyRecord using the receiver's data.
-func (pr PrettyRecord) WithName(name string) NamedPrettyRecord {
-	return NamedPrettyRecord{
-		Name:         name,
-		PrettyRecord: pr,
-	}
+// PrettyAttribute is a human-readable version of Attribute.
+// Use it for printing attribute data.
+type PrettyAttribute struct {
+	Path    string                  `json:"path"`    // Attribute file path
+	Records map[string]PrettyRecord `json:"Records"` // Attribute records
 }

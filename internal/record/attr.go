@@ -142,12 +142,15 @@ func (r Attribute) FilterByName(name ...string) Attribute {
 	return attr
 }
 
-func (r Attribute) Prettify() (pretty PrettyAttribute) {
-	pretty = make(PrettyAttribute)
+func (r Attribute) Prettify(path string) PrettyAttribute {
+	records := make(map[string]PrettyRecord)
 	for k, v := range r {
-		pretty[k] = v.Prettify()
+		records[k] = v.Prettify()
 	}
-	return
+	return PrettyAttribute{
+		Path:    path,
+		Records: records,
+	}
 }
 
 // Update recalculates the file hash, then returns a new Attribute that

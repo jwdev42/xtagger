@@ -15,6 +15,7 @@
 package program
 
 import (
+	"encoding/json"
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/xio/xfs"
 	"os"
@@ -38,10 +39,12 @@ func verifyFile(rt *prt, meta *xfs.Meta) error {
 		return err
 	}
 	builder := &strings.Builder{}
-	cmp := record.VerifyAttribute(attr.Prettify(), updated.Prettify())
-	if err := cmp.TomlWithPath(builder, meta.Path()); err != nil {
+	cmp := record.VerifyAttribute(attr.Prettify(meta.Path()), updated.Prettify(meta.Path()))
+	data, err := json.Marshal(&cmp)
+	if err != nil {
 		return err
 	}
+	builder.Write(data)
 	rt.printer.Print(builder.String())
 	return nil
 }
