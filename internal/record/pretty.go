@@ -30,5 +30,5 @@ type PrettyRecord struct {
 // Use it for printing attribute data.
 type PrettyAttribute struct {
 	Path    string                  `json:"path"`    // Attribute file path
-	Records map[string]PrettyRecord `json:"Records"` // Attribute records
+	Records map[string]PrettyRecord `json:"records"` // Attribute records
 }

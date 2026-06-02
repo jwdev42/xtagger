@@ -19,7 +19,6 @@ import (
 	"github.com/jwdev42/xtagger/internal/record"
 	"github.com/jwdev42/xtagger/internal/xio/xfs"
 	"os"
-	"strings"
 )
 
 func verifyFile(rt *prt, meta *xfs.Meta) error {
@@ -34,17 +33,19 @@ func verifyFile(rt *prt, meta *xfs.Meta) error {
 	if err != nil || len(attr) == 0 {
 		return err
 	}
+	// Recalculate hashes
 	updated, err := attr.Update(f)
 	if err != nil {
 		return err
 	}
-	builder := &strings.Builder{}
+	// Compare original records to newly hashed records
 	cmp := record.VerifyAttribute(attr.Prettify(meta.Path()), updated.Prettify(meta.Path()))
+	// Encode data to JSON
 	data, err := json.Marshal(&cmp)
 	if err != nil {
 		return err
 	}
-	builder.Write(data)
-	rt.printer.Print(builder.String())
+	// Print JSON line
+	rt.printer.Print(string(data))
 	return nil
 }
