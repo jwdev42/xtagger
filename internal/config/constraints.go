@@ -22,26 +22,42 @@ const (
 
 type Constraint uint64
 
-type Constraints struct {
-	storage Constraint
+// Add adds Constraint b to a, then returns the combined constrained.
+func (a Constraint) Add(b Constraint) Constraint {
+	return a | b
 }
 
-func (cs *Constraints) Add(c Constraint) {
-	cs.storage |= c
+// Equals returns true if a == b.
+func (a Constraint) Equals(b Constraint) bool {
+	return a == b
 }
 
-func (cs *Constraints) Has(c Constraint) bool {
-	return cs.storage&c != 0
+// Has returns true if b is a subset of a.
+// Has will always return false on ConstraintNone.
+func (a Constraint) Has(b Constraint) bool {
+	return a&b != 0
 }
 
-func (cs *Constraints) Remove(c Constraint) {
-	cs.storage &^= c
+// Remove returns the relative complement between a and b.
+func (a Constraint) Remove(b Constraint) Constraint {
+	return a &^ b
 }
 
-func (cs *Constraints) Toggle(c Constraint) {
-	cs.storage ^= c
+// Sdiff returns the symmetric difference between a and b.
+func (a Constraint) Sdiff(b Constraint) Constraint {
+	return a ^ b
 }
 
-func (cs *Constraints) Union(c Constraints) {
-	cs.Add(c.storage)
+// String returns a string representation of the constraint.
+// The returned string will always be lowercase.
+// If the constraint has no string representation, String will return
+// an empty string.
+func (a Constraint) String() string {
+	switch a {
+	case ConstraintNone:
+		return "none"
+	case ConstraintUntagged:
+		return "untagged"
+	}
+	return ""
 }

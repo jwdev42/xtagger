@@ -28,7 +28,7 @@ func DefaultPreferences() *Preferences {
 		LogLevel:     defaultLogLevel(),
 		Threads:      1,
 		UseRecursion: true,
-		Constraints:  &Constraints{},
+		Constraints:  ConstraintNone,
 	}
 }
 
@@ -45,7 +45,7 @@ type Preferences struct {
 	PrintRecords   bool
 	UsePrint0      bool
 	UseRecursion   bool
-	Constraints    *Constraints
+	Constraints    Constraint
 }
 
 // Return the programs separator string for printed entities.

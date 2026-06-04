@@ -65,7 +65,7 @@ func ParseCommandLine(prefs *Preferences) error {
 	prefs.UsePrint0 = usePrint0
 	prefs.UseRecursion = useRecursion
 	prefs.PrintRecords = commandArgs.printRecords
-	prefs.Constraints.Union(commandArgs.constraints)
+	prefs.Constraints = prefs.Constraints.Add(commandArgs.constraints)
 	return nil
 }
 

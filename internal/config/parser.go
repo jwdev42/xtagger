@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -37,11 +38,23 @@ const (
 
 // commandParserResult holds a parsed command
 type commandParserResult struct {
-	command      Command     // Application command
-	paths        []string    // Paths to process
-	names        []string    // Record names to consider
-	printRecords bool        // Flag for CommandPrint that controls if records are being printed
-	constraints  Constraints // Command constraints
+	command      Command    // Application command
+	names        []string   // Record names to consider
+	paths        []string   // Paths to process
+	printRecords bool       // Flag for CommandPrint that controls if records are being printed
+	constraints  Constraint // Command constraints
+}
+
+// equals returns true if both objects hold equal data.
+// This function is only used in the test code.
+func (a *commandParserResult) equals(b *commandParserResult) bool {
+	if a.command != b.command || a.printRecords != b.printRecords || a.constraints != b.constraints {
+		return false
+	}
+	if !slices.Equal(a.names, b.names) || !slices.Equal(a.paths, b.paths) {
+		return false
+	}
+	return true
 }
 
 // CLI command parser.
@@ -124,52 +137,44 @@ func (r *commandParser) parseCommand() (Command, error) {
 }
 
 func (r *commandParser) parseCommandTag() error {
-	//parse "as"
+	// Parse "as"
 	if err := r.parseLiteral(litAs); err != nil {
-		//if "as" is not found, parse tag constraint, then "as"
-		if err := r.parseTagConstraint(); err != nil {
-			return err
-		}
+		// If "as" is not found, parse tag constraint, then "as"
+		r.res.constraints = r.res.constraints.Add(r.parseConstraint(ConstraintUntagged))
 		if err := r.parseLiteral(litAs); err != nil {
 			return err
 		}
 	}
-	//Parse tag name
+	// Parse tag name
 	if err := r.parseName(); err != nil {
 		return err
 	}
-	//Parse "for"
+	// Parse "for"
 	if err := r.parseLiteral(litFor); err != nil {
 		return err
 	}
-	//Parse path(s)
+	// Parse path(s)
 	return r.parsePathsUntilEOF()
 }
 
 func (r *commandParser) parseCommandPrint() error {
-	if err := r.parseLiteral(litUntagged); err == nil {
-		//Parse "for" after "untagged"
-		if err := r.parseLiteral(litFor); err != nil {
-			return err
-		}
-		//Parse PATHS
-		return r.parsePathsUntilEOF()
-	}
-	//Parse optional literal "records"
+	// Parse optional constraint
+	r.res.constraints = r.res.constraints.Add(r.parseConstraint(ConstraintUntagged))
+	// Parse optional literal "records"
 	if err := r.parseLiteral(litRecords); err == nil {
 		r.res.printRecords = true
 	}
-	//Parse optional "by" + NAMES
+	// Parse optional "by" + NAMES
 	if err := r.parseLiteral(litBy); err == nil {
 		if err := r.parseNames(); err != nil {
 			return err
 		}
 	}
-	//Parse "for"
+	// Parse "for"
 	if err := r.parseLiteral(litFor); err != nil {
 		return err
 	}
-	//Parse PATHS
+	// Parse PATHS
 	return r.parsePathsUntilEOF()
 }
 
@@ -212,20 +217,28 @@ func (r *commandParser) parseCommandLicense() error {
 	return r.error(litEOF)
 }
 
-func (r *commandParser) parseTagConstraint() error {
+// parseConstraint tries to parse the current token as a constraint.
+// If a match is found, parseConstraint will consume the token and will
+// return the recognized constraint.
+// If no match is found, parseConstraint will not advance the token and
+// will return ConstraintNone.
+// If the token stream has reached EOF, parseConstraint will return
+// ConstraintNone.
+// Argument constraints is a variadic slice of all constraints the function
+// must detect. If the argument is empty, parseConstraint will not detect
+// any constraints.
+func (r *commandParser) parseConstraint(constraints ...Constraint) Constraint {
 	tok, ok := r.tok()
 	if !ok {
-		return io.EOF
+		return ConstraintNone
 	}
-	switch tok {
-	case litNone:
-	case litUntagged:
-		r.res.constraints.Add(ConstraintUntagged)
-	default:
-		return r.error(litNone, litUntagged)
+	for _, cs := range constraints {
+		if tok == cs.String() {
+			r.adv()
+			return cs
+		}
 	}
-	r.adv()
-	return nil
+	return ConstraintNone
 }
 
 func (r *commandParser) parsePath() error {
